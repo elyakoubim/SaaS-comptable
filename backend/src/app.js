@@ -14,6 +14,8 @@ const frontendDistPath = resolve(__dirname, "..", "..", "frontend", "dist");
 const hasFrontendBuild = existsSync(frontendDistPath);
 const jwksPath = resolve(__dirname, "..", "keys", "jwks.json");
 
+app.set("trust proxy", Number(process.env.TRUST_PROXY ?? 0));
+
 app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
