@@ -31,3 +31,6 @@ coverage/
 backend/keys/fps-private.pem
 backend/keys/fps.env.snippet
 backend/keys/generate-fps-keys.cjs
+
+# Documentation FPS - usage interne, ne pas committer
+docs/
