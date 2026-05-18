@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authConfig } from "../config/auth.config.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
+import { loginRateLimiter, registerRateLimiter } from "../middleware/rateLimit.middleware.js";
 import { createAccountant, findAccountantByEmail } from "../repositories/accountant.repository.js";
 import { hashPassword, signSessionToken, verifyPassword } from "../utils/authCrypto.js";
 
@@ -21,7 +22,7 @@ function toAuthErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
-authRouter.post("/register", async (req, res) => {
+authRouter.post("/register", registerRateLimiter, async (req, res) => {
   try {
     const { email, password, fullName } = req.body || {};
 
@@ -65,7 +66,7 @@ authRouter.post("/register", async (req, res) => {
   }
 });
 
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body || {};
 
