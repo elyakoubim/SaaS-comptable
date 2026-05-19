@@ -85,3 +85,20 @@ CREATE TABLE IF NOT EXISTS vat_period_aggregates (
 );
 
 CREATE INDEX IF NOT EXISTS idx_vat_period_mandant ON vat_period_aggregates(mandant_ecb);
+
+CREATE TABLE IF NOT EXISTS documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_fps_id TEXT NOT NULL UNIQUE,
+  mandant_ecb CHAR(10) NOT NULL REFERENCES mandants(ecb_number),
+  owner_type TEXT NOT NULL CHECK (owner_type IN ('CBE', 'SSIN')),
+  owner_identifier TEXT NOT NULL,
+  document_type_fps TEXT,
+  document_date TIMESTAMPTZ,
+  publish_date TIMESTAMPTZ,
+  metadata JSONB,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_mandant_publish ON documents (mandant_ecb, publish_date DESC);
+CREATE INDEX IF NOT EXISTS idx_documents_type ON documents (document_type_fps);
