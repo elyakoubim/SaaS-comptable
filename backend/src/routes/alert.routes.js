@@ -1,9 +1,12 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import {
+  acknowledgeAlert,
   listByAccountant,
   countActiveByAccountant
 } from "../repositories/alert.repository.js";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const alertRouter = Router();
 
@@ -66,6 +69,29 @@ alertRouter.get("/", requireAuth, async (req, res) => {
     }));
 
     return res.json({ items, total });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+alertRouter.post("/:id/acknowledge", requireAuth, async (req, res) => {
+  try {
+    const alertId = String(req.params.id || "");
+    if (!UUID_PATTERN.test(alertId)) {
+      return res.status(400).json({ message: "id must be a valid UUID" });
+    }
+
+    const updated = await acknowledgeAlert(alertId, req.auth.accountantId);
+    if (!updated) {
+      return res.status(404).json({ message: "Alert not found for authenticated accountant" });
+    }
+
+    return res.json({
+      id: updated.id,
+      status: updated.statut,
+      acknowledgedAt: updated.acknowledged_at,
+      acknowledgedBy: updated.acknowledged_by
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

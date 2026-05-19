@@ -117,18 +117,51 @@ async function fetchMandants() {
   return response.json();
 }
 
-async function fetchAlerts() {
-  const fallback = await buildFallbackAlerts();
-
-  try {
-    const response = await fetch(apiUrl("/api/alerts"));
-    if (!response.ok) {
-      return fallback;
-    }
-    return response.json();
-  } catch (_error) {
-    return fallback;
+async function fetchAlerts(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.level) params.set("level", String(filters.level));
+  if (filters.mandant) params.set("mandant", String(filters.mandant));
+  if (filters.acknowledged !== undefined && filters.acknowledged !== null) {
+    params.set("acknowledged", String(filters.acknowledged));
   }
+  if (filters.limit) params.set("limit", String(filters.limit));
+  if (filters.offset) params.set("offset", String(filters.offset));
+
+  const query = params.toString();
+  const path = query ? `/api/alerts?${query}` : "/api/alerts";
+
+  const response = await fetch(apiUrl(path), {
+    headers: withAuthHeaders()
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Impossible de charger les alertes");
+  }
+  return response.json();
+}
+
+async function acknowledgeAlert(alertId) {
+  const response = await fetch(apiUrl(`/api/alerts/${alertId}/acknowledge`), {
+    method: "POST",
+    headers: withAuthHeaders()
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Impossible d'acquitter l'alerte");
+  }
+  return response.json();
+}
+
+async function forceSync(cbe) {
+  const response = await fetch(apiUrl(`/api/sync/${cbe}`), {
+    method: "POST",
+    headers: withAuthHeaders()
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Impossible de lancer la sync");
+  }
+  return response.json();
 }
 
 async function fetchSignals() {
@@ -148,25 +181,5 @@ async function fetchSignals() {
   return { data };
 }
 
-async function buildFallbackAlerts() {
-  const mandantsPayload = await fetchMandants().catch(() => ({ data: [] }));
-  const mandants = mandantsPayload.data || [];
-
-  const data = mandants.slice(0, 8).map((item, index) => {
-    const level = index % 3 === 0 ? "critical" : index % 2 === 0 ? "warning" : "info";
-    return {
-      id: `${item.ecbNumber}-${index}`,
-      mandantEcb: item.ecbNumber,
-      level,
-      title: `${level === "critical" ? "Amende" : "Notification"} - ${item.companyName || "Entreprise"}`,
-      detail: "Alerte generee depuis les metadonnees MyMinfin lors de la derniere synchronisation.",
-      documentDate: new Date(Date.now() - index * 86400000).toLocaleDateString("fr-BE"),
-      status: "active"
-    };
-  });
-
-  return { data };
-}
-
-export { startFpsConnection, fetchMandants, fetchAlerts, fetchSignals };
+export { startFpsConnection, fetchMandants, fetchAlerts, acknowledgeAlert, forceSync, fetchSignals };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
