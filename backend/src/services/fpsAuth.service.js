@@ -184,13 +184,23 @@ async function exchangeAuthorizationCode({ code, state }) {
       eventStatus: "success"
     });
   } catch (error) {
-    await insertTokenEvent({
-      mandantEcb: flow.ecbNumber,
-      eventType: "token_exchange",
-      eventStatus: "failed",
-      errorCode: "exchange_failed",
-      errorDetail: error.message
-    });
+    console.error("FPS token exchange failed:", error.message);
+
+    // Best-effort audit log. A failed exchange often means no mandant row was
+    // persisted yet, so this INSERT can violate the token_events FK. Never let
+    // that secondary failure mask the real error below.
+    try {
+      await insertTokenEvent({
+        mandantEcb: flow.ecbNumber,
+        eventType: "token_exchange",
+        eventStatus: "failed",
+        errorCode: "exchange_failed",
+        errorDetail: error.message
+      });
+    } catch (logError) {
+      console.error("Could not record token_exchange failure event:", logError.message);
+    }
+
     throw error;
   }
 
