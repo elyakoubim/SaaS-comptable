@@ -38,7 +38,8 @@ async function callTokenEndpoint(body) {
   const response = await fetch(fpsConfig.tokenUrl, {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json"
     },
     body
   });
@@ -177,6 +178,7 @@ async function exchangeAuthorizationCode({ code, state }) {
 
   const body = new URLSearchParams({
     grant_type: "authorization_code",
+    realm: fpsConfig.realm,
     redirect_uri: fpsConfig.redirectUri,
     code,
     code_verifier: flow.codeVerifier,
@@ -242,6 +244,7 @@ async function refreshMandantByEcb(ecbNumber) {
 
   const body = new URLSearchParams({
     grant_type: "refresh_token",
+    realm: fpsConfig.realm,
     refresh_token: refreshToken,
     client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
     client_assertion: clientAssertion,

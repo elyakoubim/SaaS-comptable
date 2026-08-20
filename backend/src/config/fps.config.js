@@ -38,6 +38,7 @@ const fpsConfig = {
   clientId: process.env.FPS_CLIENT_ID || "",
   redirectUri: process.env.FPS_REDIRECT_URI || "",
   scope: process.env.FPS_SCOPE || "openid profile",
+  realm: process.env.FPS_REALM || "/externalapi",
   keyId: process.env.FPS_KEY_ID || "",
   privateKeyPem: normalizePrivateKeyPem(process.env.FPS_PRIVATE_KEY_PEM),
   claimsEcbField: process.env.FPS_CLAIMS_ECB_FIELD || "ecb",
