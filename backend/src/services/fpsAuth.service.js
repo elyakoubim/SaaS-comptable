@@ -45,14 +45,34 @@ async function callTokenEndpoint(body) {
 
   if (!response.ok) {
     const text = await response.text();
-    const bodySnippet = String(text || "").slice(0, 300);
-    if (bodySnippet.includes("invalid_grant")) {
+    const contentType = response.headers.get("content-type") || "";
+
+    // Full body to server logs for diagnosis (FPS sometimes returns an HTML
+    // error page instead of the OAuth JSON error).
+    console.error(
+      `FPS token endpoint failed: status=${response.status} content-type=${contentType}\n` +
+        `----- body start -----\n${text}\n----- body end -----`
+    );
+
+    const lower = String(text || "").toLowerCase();
+    if (lower.includes("invalid_grant")) {
       throw new Error(`Token endpoint failed (${response.status}): invalid_grant`);
     }
-    if (bodySnippet.includes("invalid_client")) {
+    if (lower.includes("invalid_client")) {
       throw new Error(`Token endpoint failed (${response.status}): invalid_client`);
     }
-    throw new Error(`Token endpoint failed (${response.status}): ${bodySnippet}`);
+
+    // HTML page (not JSON) usually means the AS rejected the request before the
+    // OAuth handler — most often an expired authorization code (valid only ~10s)
+    // caused by a cold-started backend, or a gateway-level rejection.
+    if (contentType.includes("html") || lower.includes("<!doctype html")) {
+      throw new Error(
+        `Token endpoint failed (${response.status}): HTML error page returned ` +
+          "(likely expired authorization code — code is valid ~10s — or gateway rejection)"
+      );
+    }
+
+    throw new Error(`Token endpoint failed (${response.status}): ${String(text || "").slice(0, 300)}`);
   }
 
   return response.json();
