@@ -4,7 +4,7 @@
       "kty": "RSA",
       "n": "06vPLHYqSwu9kBRjV_IIiHwXWeDcg-MX3IXypfQUSL6D6xBwJbDyigPFNujt6uz0lau03kPC9tZ9WX2kXIhDs1WDowfkKWmK5FoTdcew8MfrjMk08OJZg0c5D8gJuz3kZbhLAWM85c0rJ1dKTPkGUttLEeYVgusqKgERdL_ZU3gMzCLMoCyMTr7miPqeXxjAVPewWhcW52FLRd1ERcWwCU9f-DY-TDpLc07qBUdsHAN-bza0XCeG22JESW9t79FS4CBGnU1Vwg0cxdXkcUTNDxRgB__fArAdL9qe2ABI96Z907cnkjFqEOjYuUL9TSR4vwETf9XB02unNNkwnJDdYQ",
       "e": "AQAB",
-      "kid": "fps-1774521174655",
+      "kid": "legakte-key-2026-08",
       "use": "sig",
       "alg": "RS256"
     }
