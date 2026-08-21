@@ -21,6 +21,24 @@ function makeClientAssertion() {
   });
 }
 
+// Adds the correct client-authentication params to a token request depending on
+// how the client is registered on the FPS side:
+//  - "none": Public client -> PKCE only, no client_assertion.
+//  - "private_key_jwt": Confidential client -> signed JWT client assertion.
+function appendClientAuth(params) {
+  params.set("client_id", fpsConfig.clientId);
+
+  if (fpsConfig.clientAuthMethod !== "none") {
+    params.set(
+      "client_assertion_type",
+      "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+    );
+    params.set("client_assertion", makeClientAssertion());
+  }
+
+  return params;
+}
+
 function isPlaceholder(value) {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return true;
@@ -116,11 +134,14 @@ function buildAuthorizationUrl(ecbNumber, accountantId) {
     throw new Error("Authenticated accountant is required");
   }
 
+  const requiresClientKey = fpsConfig.clientAuthMethod !== "none";
   const missing = [
     !fpsConfig.clientId || isPlaceholder(fpsConfig.clientId) ? "FPS_CLIENT_ID" : null,
     !fpsConfig.redirectUri || isPlaceholder(fpsConfig.redirectUri) ? "FPS_REDIRECT_URI" : null,
-    !fpsConfig.keyId || isPlaceholder(fpsConfig.keyId) ? "FPS_KEY_ID" : null,
-    !fpsConfig.privateKeyPem || isPlaceholder(fpsConfig.privateKeyPem) ? "FPS_PRIVATE_KEY_PEM" : null
+    requiresClientKey && (!fpsConfig.keyId || isPlaceholder(fpsConfig.keyId)) ? "FPS_KEY_ID" : null,
+    requiresClientKey && (!fpsConfig.privateKeyPem || isPlaceholder(fpsConfig.privateKeyPem))
+      ? "FPS_PRIVATE_KEY_PEM"
+      : null
   ].filter(Boolean);
 
   if (missing.length > 0) {
@@ -174,18 +195,15 @@ async function exchangeAuthorizationCode({ code, state }) {
     throw new Error("Missing authenticated accountant context for this state");
   }
 
-  const clientAssertion = makeClientAssertion();
-
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    realm: fpsConfig.realm,
-    redirect_uri: fpsConfig.redirectUri,
-    code,
-    code_verifier: flow.codeVerifier,
-    client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-    client_assertion: clientAssertion,
-    client_id: fpsConfig.clientId
-  });
+  const body = appendClientAuth(
+    new URLSearchParams({
+      grant_type: "authorization_code",
+      realm: fpsConfig.realm,
+      redirect_uri: fpsConfig.redirectUri,
+      code,
+      code_verifier: flow.codeVerifier
+    })
+  );
 
   try {
     const tokenSet = await callTokenEndpoint(body);
@@ -240,16 +258,14 @@ async function refreshMandantByEcb(ecbNumber) {
   }
 
   const refreshToken = decryptText(mandant.refresh_token_encrypted);
-  const clientAssertion = makeClientAssertion();
 
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    realm: fpsConfig.realm,
-    refresh_token: refreshToken,
-    client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-    client_assertion: clientAssertion,
-    client_id: fpsConfig.clientId
-  });
+  const body = appendClientAuth(
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      realm: fpsConfig.realm,
+      refresh_token: refreshToken
+    })
+  );
 
   try {
     const tokenSet = await callTokenEndpoint(body);
