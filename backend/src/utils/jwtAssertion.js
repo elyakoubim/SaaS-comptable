@@ -58,7 +58,7 @@ function buildClientAssertion({ clientId, audience, keyId, privateKeyPem }) {
     iss: clientId,
     sub: clientId,
     aud: audience,
-    exp: now + 1800,
+    exp: now + 300,
     iat: now,
     jti: crypto.randomUUID()
   };

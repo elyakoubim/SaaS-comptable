@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import crypto from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +9,7 @@ import { alertRouter } from "./routes/alert.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { fpsRouter } from "./routes/fps.routes.js";
 import { syncRouter } from "./routes/sync.routes.js";
+import { fpsConfig } from "./config/fps.config.js";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -26,7 +28,43 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+// Derive the public JWKS directly from the signing private key so the published
+// key can never drift from the key actually used to sign client assertions.
+// Falls back to the static keys/jwks.json only if no private key is configured.
+function deriveJwksFromPrivateKey() {
+  const pem = fpsConfig.privateKeyPem;
+  if (!pem) {
+    return null;
+  }
+
+  try {
+    const publicKey = crypto.createPublicKey({ key: pem, format: "pem" });
+    const jwk = publicKey.export({ format: "jwk" });
+    return {
+      keys: [
+        {
+          kty: jwk.kty,
+          n: jwk.n,
+          e: jwk.e,
+          kid: fpsConfig.keyId || "fps-key",
+          use: "sig",
+          alg: "RS256"
+        }
+      ]
+    };
+  } catch (error) {
+    console.error("Could not derive JWKS from FPS_PRIVATE_KEY_PEM:", error.message);
+    return null;
+  }
+}
+
 app.get("/.well-known/jwks.json", (_req, res) => {
+  const derived = deriveJwksFromPrivateKey();
+  if (derived) {
+    res.type("application/jwk-set+json");
+    return res.json(derived);
+  }
+
   if (!existsSync(jwksPath)) {
     return res.status(500).json({ message: "JWKS file not found on server" });
   }
