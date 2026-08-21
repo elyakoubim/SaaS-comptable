@@ -53,6 +53,13 @@ function isPlaceholder(value) {
 }
 
 async function callTokenEndpoint(body) {
+  console.log(
+    `FPS token request: grant=${body.get("grant_type")} ` +
+      `authMethod=${fpsConfig.clientAuthMethod} ` +
+      `hasAssertion=${body.has("client_assertion")} ` +
+      `client_id=${body.get("client_id")} realm=${body.get("realm")}`
+  );
+
   const response = await fetch(fpsConfig.tokenUrl, {
     method: "POST",
     headers: {
@@ -74,11 +81,21 @@ async function callTokenEndpoint(body) {
     );
 
     const lower = String(text || "").toLowerCase();
-    if (lower.includes("invalid_grant")) {
-      throw new Error(`Token endpoint failed (${response.status}): invalid_grant`);
+
+    // Try to surface the OAuth error + human-readable description from the JSON.
+    let oauthError = "";
+    let oauthDescription = "";
+    try {
+      const parsed = JSON.parse(text);
+      oauthError = parsed.error || "";
+      oauthDescription = parsed.error_description || parsed.message || "";
+    } catch {
+      // not JSON
     }
-    if (lower.includes("invalid_client")) {
-      throw new Error(`Token endpoint failed (${response.status}): invalid_client`);
+
+    if (oauthError || oauthDescription) {
+      const detail = [oauthError, oauthDescription].filter(Boolean).join(" — ");
+      throw new Error(`Token endpoint failed (${response.status}): ${detail}`);
     }
 
     // HTML page (not JSON) usually means the AS rejected the request before the
