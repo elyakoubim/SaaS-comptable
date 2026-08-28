@@ -48,6 +48,9 @@ function buildClientAssertion({ clientId, audience, keyId, privateKeyPem }) {
   assertRealPrivateKeyPem(privateKeyPem);
 
   const now = Math.floor(Date.now() / 1000);
+  // Small clock-skew leeway: backdate iat/nbf so a minor drift between our
+  // server clock and the AS clock can't make the assertion look "not yet valid".
+  const CLOCK_SKEW_LEEWAY_SECONDS = 60;
   const header = {
     alg: "RS256",
     typ: "JWT",
@@ -58,8 +61,9 @@ function buildClientAssertion({ clientId, audience, keyId, privateKeyPem }) {
     iss: clientId,
     sub: clientId,
     aud: audience,
+    iat: now - CLOCK_SKEW_LEEWAY_SECONDS,
+    nbf: now - CLOCK_SKEW_LEEWAY_SECONDS,
     exp: now + 300,
-    iat: now,
     jti: crypto.randomUUID()
   };
 
