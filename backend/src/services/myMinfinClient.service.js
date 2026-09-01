@@ -145,15 +145,52 @@ async function parseProblemDetailBody(response) {
   };
 }
 
+/**
+ * Choisit une langue dans un LocalizedString belgif ({nl, fr, de, en}).
+ */
+function pickLocalized(localized, preferred = ["fr", "nl", "en", "de"]) {
+  if (!localized || typeof localized !== "object") {
+    return null;
+  }
+  for (const lang of preferred) {
+    if (typeof localized[lang] === "string" && localized[lang].length > 0) {
+      return localized[lang];
+    }
+  }
+  return null;
+}
+
+/**
+ * Projette un Document MyMinfin (schéma fineapi-v1.yaml) vers notre modèle.
+ *
+ * ⚠️ La forme réelle diffère de ce qu'on supposait :
+ *   - `relatedTo` est un TABLEAU de LegalEntity `{type: 'CBE'|'SSIN', identifier}`,
+ *     et non un objet `{ownerType, ownerIdentifier}`. Il liste les entités qui
+ *     rendent le document accessible : l'entreprise connectée elle-même, ou les
+ *     mandants qui lui en ont donné l'accès.
+ *   - le type est `docType.name`, un LocalizedString `{nl, fr, de, en}`.
+ *   - il n'existe ni `documentDate` ni `publishDate` : seulement `modifiedOn`.
+ *   - `content` est l'URI du contenu du document.
+ */
 function mapDocument(raw) {
-  const relatedTo = raw?.relatedTo ?? {};
+  const owners = Array.isArray(raw?.relatedTo) ? raw.relatedTo : [];
+  const primaryOwner = owners[0] || null;
+
   return {
     uuid: raw?.uuid ?? null,
-    ownerType: relatedTo.ownerType ?? null,
-    ownerIdentifier: relatedTo.ownerIdentifier ?? null,
-    documentType: raw?.documentType ?? null,
-    documentDate: raw?.documentDate ?? null,
-    publishDate: raw?.publishDate ?? null,
+    ownerType: primaryOwner?.type ?? null,
+    ownerIdentifier: primaryOwner?.identifier ?? null,
+    // Toutes les entités qui donnent accès au document : c'est parmi celles-ci
+    // qu'il faut choisir le couple owner à passer au téléchargement (scénario S05).
+    owners: owners.map((entity) => ({
+      ownerType: entity?.type ?? null,
+      ownerIdentifier: entity?.identifier ?? null
+    })),
+    documentType: pickLocalized(raw?.docType?.name),
+    documentDate: raw?.modifiedOn ?? null,
+    publishDate: raw?.modifiedOn ?? null,
+    contentUri: raw?.content ?? null,
+    metadata: Array.isArray(raw?.metadata) ? raw.metadata : [],
     raw
   };
 }
@@ -223,14 +260,17 @@ async function searchDocuments(accessToken, cbe, since, owner = null) {
       );
     }
 
-    if (!Array.isArray(json)) {
-      throw new ApiError("Unexpected MyMinfin response shape (expected array)", {
-        status: 200,
-        raw: json
-      });
+    // La réponse est un DocumentCollection { items, total, lastSyncDate },
+    // pas un tableau brut (cf. fineapi-v1.yaml#/components/schemas/DocumentCollection).
+    const items = Array.isArray(json?.items) ? json.items : null;
+    if (!items) {
+      throw new ApiError(
+        "Unexpected MyMinfin response shape (expected a DocumentCollection with an 'items' array)",
+        { status: 200, raw: json }
+      );
     }
 
-    return json.map(mapDocument);
+    return items.map(mapDocument);
   }
 
   const problem = await parseProblemDetailBody(response);
