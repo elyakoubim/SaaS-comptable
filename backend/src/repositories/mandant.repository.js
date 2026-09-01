@@ -135,10 +135,28 @@ async function updateMandantStatus(ecbNumber, status) {
   await db.query(query, [ecbNumber, status]);
 }
 
+/**
+ * Horodate la dernière synchronisation réussie d'un mandant.
+ *
+ * Sémantique : « quand Vatu a-t-il collecté ce dossier pour la dernière fois ».
+ * À ne pas confondre avec le champ `lastSyncDate` renvoyé par MyMinfin dans un
+ * DocumentCollection, qui décrit la dernière synchronisation interne du SPF.
+ */
+async function updateLastSyncAt(ecbNumber, at = new Date()) {
+  const query = `
+    UPDATE mandants
+    SET last_sync_at = $2::timestamptz,
+        updated_at = NOW()
+    WHERE ecb_number = $1
+  `;
+  await db.query(query, [ecbNumber, at.toISOString()]);
+}
+
 export {
   upsertMandantTokens,
   findMandantByEcb,
   listMandantsSummary,
   listRefreshCandidates,
+  updateLastSyncAt,
   updateMandantStatus
 };

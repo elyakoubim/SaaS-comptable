@@ -40,6 +40,44 @@ const SEARCH_PATH = "/FineAPI/Generic/OAU/v2/documents";
  * dans la spécification OpenAPI (MyMinFinApiV2.zip, embarquée comme objet OLE
  * dans TECHNICAL_DOCUMENTATION_MMFAPI.docx — voir docs/).
  */
+/**
+ * Détermine le vrai type d'un document à partir de ses premiers octets.
+ *
+ * ⚠️ MyMinfin renvoie `application/octet-stream` pour TOUS ses documents, y
+ * compris les PDF. Se fier à son en-tête reviendrait à forcer un téléchargement
+ * là où le navigateur pourrait afficher le document. Et la documentation précise
+ * que le contenu peut être « PDF, Word, etc. » : étiqueter systématiquement en
+ * PDF servirait un .docx sous une extension mensongère.
+ */
+function detectContentType(buffer, headerContentType = "") {
+  const head = buffer.subarray(0, 8);
+
+  if (head.subarray(0, 5).toString("latin1") === "%PDF-") {
+    return { contentType: "application/pdf", extension: "pdf" };
+  }
+  // ZIP : docx, xlsx, pptx et zip nu partagent la même signature "PK\x03\x04".
+  if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) {
+    return {
+      contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      extension: "docx"
+    };
+  }
+  // Ancien format Office (OLE Compound File) : .doc, .xls
+  if (head.subarray(0, 8).toString("hex") === "d0cf11e0a1b11ae1") {
+    return { contentType: "application/msword", extension: "doc" };
+  }
+  if (head.subarray(0, 5).toString("latin1") === "<?xml") {
+    return { contentType: "application/xml", extension: "xml" };
+  }
+
+  const fromHeader = String(headerContentType).split(";")[0].trim();
+  if (fromHeader && fromHeader !== "application/octet-stream") {
+    return { contentType: fromHeader, extension: null };
+  }
+
+  return { contentType: "application/octet-stream", extension: null };
+}
+
 function buildRequestHeaders(accessToken, accept) {
   const correlationId = crypto.randomUUID();
   return {
@@ -311,7 +349,9 @@ async function searchDocuments(accessToken, cbe, since, owner = null) {
  *   document, tel que renvoyé dans `relatedTo` par la recherche. OBLIGATOIRE dès que le
  *   document appartient à un mandant (scénario S05) : sans lui, FPS répond 403 (S04).
  *   Omettre uniquement pour un document possédé par l'entité connectée elle-même (S03).
- * @returns {Promise<Buffer>} Contenu binaire du document (PDF ou autre)
+ * @returns {Promise<{content: Buffer, contentType: string, extension: string|null}>}
+ *   Contenu binaire et type réel, déduit des premiers octets (MyMinfin annonce
+ *   `application/octet-stream` pour tout).
  * @throws {RateLimitError} 429 avec Retry-After
  * @throws {AuthError} 401 (token invalide/expiré, retryable) ou 403 (pas de mandat, >60 jours, owner manquant — non-retryable)
  * @throws {ApiError} 400 (UUID/BCE invalide, owner partiel) ou autre erreur HTTP
@@ -348,7 +388,14 @@ async function downloadDocument(accessToken, uuid, owner = null) {
         { status: 200 }
       );
     }
-    return Buffer.from(arrayBuffer);
+
+    const content = Buffer.from(arrayBuffer);
+    const { contentType, extension } = detectContentType(
+      content,
+      response.headers.get("content-type")
+    );
+
+    return { content, contentType, extension };
   }
 
   const problem = await parseProblemDetailBody(response);

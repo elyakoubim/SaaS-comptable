@@ -41,13 +41,20 @@ documentRouter.get("/:uuid/content", requireAuth, async (req, res) => {
     }
 
     const accessToken = await getValidAccessToken(document.mandant_ecb);
-    const content = await downloadDocument(accessToken, uuid, {
+    const { content, contentType, extension } = await downloadDocument(accessToken, uuid, {
       ownerType: document.owner_type,
       ownerIdentifier: document.owner_identifier
     });
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${uuid}.pdf"`);
+    // Le type est déduit des octets, pas de l'en-tête du SPF qui annonce
+    // `application/octet-stream` pour tout. Un .docx servi en application/pdf
+    // ouvrirait un lecteur PDF sur un fichier qui n'en est pas un.
+    const fileName = extension ? `${uuid}.${extension}` : uuid;
+    const disposition = contentType === "application/pdf" ? "inline" : "attachment";
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `${disposition}; filename="${fileName}"`);
+    res.setHeader("Content-Length", String(content.length));
     res.setHeader("Cache-Control", "private, no-store");
     return res.send(content);
   } catch (error) {

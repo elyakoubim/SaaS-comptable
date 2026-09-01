@@ -9,7 +9,7 @@ import {
 import { searchDocuments } from "../services/myMinfinClient.service.js";
 import { ApiError, AuthError, RateLimitError } from "../services/myMinfinErrors.js";
 import { classifyDocument } from "../services/documentClassifier.service.js";
-import { findMandantByEcb } from "../repositories/mandant.repository.js";
+import { findMandantByEcb, updateLastSyncAt } from "../repositories/mandant.repository.js";
 import { upsertDocument } from "../repositories/document.repository.js";
 import { createAlert, existsForDocument } from "../repositories/alert.repository.js";
 import { decryptText } from "../utils/tokenCrypto.js";
@@ -101,6 +101,10 @@ async function processDocumentSyncJob(job) {
         createdAlerts += 1;
       }
     }
+
+    // Horodate la synchronisation : sans cela le tableau de bord affiche
+    // « Dernière sync : - » en permanence, même quand tout fonctionne.
+    await updateLastSyncAt(ecbNumber);
 
     console.log(
       `[doc-sync] ${ecbNumber}: ${documents.length} documents, ${createdAlerts} new alerts`
