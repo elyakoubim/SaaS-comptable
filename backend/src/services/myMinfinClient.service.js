@@ -48,6 +48,31 @@ function ensureUuid(value) {
   }
 }
 
+const OWNER_TYPES = new Set(["CBE", "SSIN"]);
+
+/**
+ * Normalise un couple propriétaire { ownerType, ownerIdentifier } tel que
+ * MyMinfin le renvoie dans le champ `relatedTo` d'un document.
+ * Retourne null si aucun propriétaire n'est fourni (= pas de filtre).
+ */
+function normalizeOwner(owner) {
+  if (owner === null || owner === undefined) {
+    return null;
+  }
+
+  const ownerType = String(owner.ownerType || "").toUpperCase();
+  const ownerIdentifier = String(owner.ownerIdentifier || "").replace(/\D/g, "");
+
+  if (!OWNER_TYPES.has(ownerType)) {
+    throw new Error("ownerType must be 'CBE' or 'SSIN'");
+  }
+  if (!ownerIdentifier) {
+    throw new Error("ownerIdentifier is required when ownerType is provided");
+  }
+
+  return { ownerType, ownerIdentifier };
+}
+
 async function parseProblemDetailBody(response) {
   let bodyText = "";
   try {
@@ -106,23 +131,35 @@ function parseRetryAfter(headerValue) {
  *   - Production : 1 search /10min /CBE
  *   - 429 → respecter l'en-tête Retry-After (secondes)
  *
+ * ⚠️ Deux comportements, cf. scénarios de test FPS :
+ *   - S01 (défaut ici, owner omis) : AUCUN filtre propriétaire → renvoie tout ce
+ *     que l'entité connectée peut voir, Y COMPRIS les documents de ses MANDANTS.
+ *     C'est le comportement attendu pour un cabinet comptable.
+ *   - S02 (owner fourni) : restreint aux documents de cette seule entité.
+ *
  * @param {string} accessToken - Token OAuth déjà déchiffré (AES-256-GCM)
- * @param {string} cbe - Numéro BCE belge (10 chiffres, validé en amont)
+ * @param {string} cbe - BCE du mandant connecté (10 chiffres ; clé de rate limit FPS)
  * @param {Date} since - Date plancher (max 60 jours dans le passé selon FPS)
+ * @param {{ownerType: string, ownerIdentifier: string}|null} [owner] - Filtre optionnel (S02)
  * @returns {Promise<Array<MyMinfinDocument>>} Liste de documents bruts
  * @throws {RateLimitError} 429 avec Retry-After
  * @throws {AuthError} 401 (token invalide/expiré) ou 403 (pas de mandat)
  * @throws {ApiError} autre erreur HTTP ou body inattendu
  */
-async function searchDocuments(accessToken, cbe, since) {
+async function searchDocuments(accessToken, cbe, since, owner = null) {
   ensureNonEmptyString(accessToken, "accessToken");
   ensureCbe(cbe);
   ensureDate(since, "since");
+  const scopedOwner = normalizeOwner(owner);
 
   const url = new URL(SEARCH_PATH, fpsConfig.mmfBaseUrl);
   url.searchParams.set("since", since.toISOString().slice(0, 10));
-  url.searchParams.set("ownerType", "CBE");
-  url.searchParams.set("ownerIdentifier", cbe);
+
+  // Sans filtre = scénario S01 : les documents des mandants remontent aussi.
+  if (scopedOwner) {
+    url.searchParams.set("ownerType", scopedOwner.ownerType);
+    url.searchParams.set("ownerIdentifier", scopedOwner.ownerIdentifier);
+  }
 
   const response = await fetch(url, {
     method: "GET",
@@ -191,23 +228,29 @@ async function searchDocuments(accessToken, cbe, since) {
  *
  * @param {string} accessToken - Token OAuth déchiffré
  * @param {string} uuid - UUID du document MyMinfin
- * @param {string} cbe - BCE du propriétaire (CBE owner)
+ * @param {{ownerType: string, ownerIdentifier: string}|null} [owner] - Propriétaire réel du
+ *   document, tel que renvoyé dans `relatedTo` par la recherche. OBLIGATOIRE dès que le
+ *   document appartient à un mandant (scénario S05) : sans lui, FPS répond 403 (S04).
+ *   Omettre uniquement pour un document possédé par l'entité connectée elle-même (S03).
  * @returns {Promise<Buffer>} Contenu binaire du document (PDF ou autre)
  * @throws {RateLimitError} 429 avec Retry-After
  * @throws {AuthError} 401 (token invalide/expiré, retryable) ou 403 (pas de mandat, >60 jours, owner manquant — non-retryable)
  * @throws {ApiError} 400 (UUID/BCE invalide, owner partiel) ou autre erreur HTTP
  */
-async function downloadDocument(accessToken, uuid, cbe) {
+async function downloadDocument(accessToken, uuid, owner = null) {
   ensureNonEmptyString(accessToken, "accessToken");
   ensureUuid(uuid);
-  ensureCbe(cbe);
+  const documentOwner = normalizeOwner(owner);
 
   const url = new URL(
     `/FineAPI/Generic/OAU/v2/documents/${encodeURIComponent(uuid)}/content`,
     fpsConfig.mmfBaseUrl
   );
-  url.searchParams.set("ownerType", "CBE");
-  url.searchParams.set("ownerIdentifier", cbe);
+
+  if (documentOwner) {
+    url.searchParams.set("ownerType", documentOwner.ownerType);
+    url.searchParams.set("ownerIdentifier", documentOwner.ownerIdentifier);
+  }
 
   const response = await fetch(url, {
     method: "GET",
