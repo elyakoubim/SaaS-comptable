@@ -42,6 +42,13 @@ async function enqueueBulkRefresh() {
  * Idempotence : jobId = `sync-${ecbNumber}` — un seul job actif/queued à la fois
  * par CBE. Si un job existe déjà avec ce jobId, l'appel est un no-op côté BullMQ.
  *
+ * ⚠️ Piège corrigé ici : avec `removeOnFail: false`, un job TERMINÉ (failed ou
+ * completed) conserve son jobId dans Redis. Tout nouvel ajout était alors ignoré
+ * en silence — un seul échec bloquait donc définitivement toutes les synchros
+ * de ce dossier, pendant que l'API continuait de répondre 202 {queued:true}.
+ * On purge donc un job déjà terminé avant de ré-enfiler. Un job encore
+ * waiting/active/delayed est laissé intact : c'est l'idempotence voulue.
+ *
  * @param {string} ecbNumber - BCE 10 chiffres (validé en amont)
  * @param {Object} [options]
  * @param {Date} [options.since] - Date plancher (sinon worker utilisera son défaut)
@@ -55,7 +62,19 @@ async function enqueueDocumentSyncForMandant(ecbNumber, options = {}) {
     since: options.since instanceof Date ? options.since.toISOString() : null
   };
 
-  const jobOptions = { jobId: `sync-${ecbNumber}` };
+  const jobId = `sync-${ecbNumber}`;
+
+  const existing = await documentSyncQueue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState().catch(() => null);
+    if (state === "completed" || state === "failed") {
+      await existing.remove().catch((error) => {
+        console.warn(`[queues] could not remove finished job ${jobId}: ${error.message}`);
+      });
+    }
+  }
+
+  const jobOptions = { jobId };
   if (typeof options.delay === "number" && options.delay > 0) {
     jobOptions.delay = options.delay;
   }
