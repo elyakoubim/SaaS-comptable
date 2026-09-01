@@ -25,15 +25,20 @@ import { ApiError, AuthError, RateLimitError } from "./myMinfinErrors.js";
 const SEARCH_PATH = "/FineAPI/Generic/OAU/v2/documents";
 
 /**
- * En-têtes obligatoires pour les API du SPF.
+ * En-têtes d'une requête MyMinfin.
  *
- * ⚠️ `correlationId` n'est pas optionnel : sans lui la passerelle rejette la
- * requête AVANT d'examiner le Bearer, avec
+ * `Minfin-Ws-Correlation` est **obligatoire** (`required: true` dans openapi.yaml,
+ * pour /documents comme pour /documents/{uuid}/content) : un UUID aléatoire par
+ * requête, que le SPF réplique dans sa réponse, à des fins de traçage.
+ *
+ * Sans lui, la passerelle rejette l'appel AVANT d'examiner le Bearer, avec
  *   401 {"code":"InboundAuthenticationFailure","message":"Mandatory headers are missing"}
  * ce qui ressemble trompeusement à un problème de token ou de scope.
- * La doc MyMinfin le décrit comme « the UUID that is generated on your side in
- * the HTTP headers each time you call the API » — un UUID neuf par appel, qui
- * sert aussi à tracer la requête auprès du helpdesk.
+ *
+ * ⚠️ Ne pas se fier au nom donné dans la prose du document Word, qui parle d'un
+ * « correlationId header » : le nom réel est `Minfin-Ws-Correlation`. Il figure
+ * dans la spécification OpenAPI (MyMinFinApiV2.zip, embarquée comme objet OLE
+ * dans TECHNICAL_DOCUMENTATION_MMFAPI.docx — voir docs/).
  */
 function buildRequestHeaders(accessToken, accept) {
   const correlationId = crypto.randomUUID();
@@ -42,18 +47,8 @@ function buildRequestHeaders(accessToken, accept) {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: accept,
-      // La passerelle du SPF répond 401 InboundAuthenticationFailure /
-      // "Mandatory headers are missing" quand il en manque un. La doc ne les
-      // liste pas ; les scénarios de test officiels ont été validés avec curl.
-      // On envoie donc ce que curl/un navigateur envoient naturellement et que
-      // le fetch natif de Node (undici) N'ENVOIE PAS :
-      "User-Agent": "Vatu/0.1 (+https://connect.vatu.be)",
-      // correlationId : nommé tel quel dans la doc MyMinfin. On envoie aussi la
-      // forme conventionnelle X-Correlation-Id, au cas où la passerelle attende
-      // celle-là. Même valeur, pour rester traçable côté helpdesk.
-      correlationId,
-      "X-Correlation-Id": correlationId,
-      "Accept-Language": "fr"
+      "Minfin-Ws-Correlation": correlationId,
+      "User-Agent": "Vatu/0.1 (+https://connect.vatu.be)"
     }
   };
 }
