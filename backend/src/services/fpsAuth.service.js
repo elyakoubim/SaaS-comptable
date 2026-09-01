@@ -222,8 +222,13 @@ async function exchangeAuthorizationCode({ code, state }) {
     })
   );
 
+  // Declared outside the try: a `const` inside the block is out of scope in the
+  // return statement below, which threw "tokenSet is not defined" AFTER a fully
+  // successful token exchange.
+  let tokenSet;
+
   try {
-    const tokenSet = await callTokenEndpoint(body);
+    tokenSet = await callTokenEndpoint(body);
     const idTokenPayload = await verifyIdToken(tokenSet.id_token, flow.nonce);
 
     await persistTokenSet({
