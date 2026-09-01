@@ -42,12 +42,13 @@ async function enqueueBulkRefresh() {
  * Idempotence : jobId = `sync-${ecbNumber}` — un seul job actif/queued à la fois
  * par CBE. Si un job existe déjà avec ce jobId, l'appel est un no-op côté BullMQ.
  *
- * ⚠️ Piège corrigé ici : avec `removeOnFail: false`, un job TERMINÉ (failed ou
+ * ⚠️ Piège corrigé ici : avec `removeOnFail: false`, un job terminé (failed ou
  * completed) conserve son jobId dans Redis. Tout nouvel ajout était alors ignoré
  * en silence — un seul échec bloquait donc définitivement toutes les synchros
  * de ce dossier, pendant que l'API continuait de répondre 202 {queued:true}.
- * On purge donc un job déjà terminé avant de ré-enfiler. Un job encore
- * waiting/active/delayed est laissé intact : c'est l'idempotence voulue.
+ * Un job "delayed" (en attente de backoff, 5 à 20 min) produisait le même effet
+ * de façon temporaire. On purge donc tout job qui n'est ni actif ni en file, et
+ * on ne préserve l'idempotence que pour ceux-là.
  *
  * @param {string} ecbNumber - BCE 10 chiffres (validé en amont)
  * @param {Object} [options]
@@ -64,12 +65,18 @@ async function enqueueDocumentSyncForMandant(ecbNumber, options = {}) {
 
   const jobId = `sync-${ecbNumber}`;
 
+  // On ne conserve l'idempotence que pour un job réellement en cours ou prêt à
+  // partir. Un job "delayed" attend un backoff de 5 à 20 minutes : le laisser
+  // bloquer l'id ferait qu'une demande explicite de synchronisation ne se
+  // déclencherait pas avant ce délai, sans que rien ne le signale.
+  const BLOCKING_STATES = new Set(["active", "waiting", "waiting-children", "prioritized"]);
+
   const existing = await documentSyncQueue.getJob(jobId);
   if (existing) {
     const state = await existing.getState().catch(() => null);
-    if (state === "completed" || state === "failed") {
+    if (!BLOCKING_STATES.has(state)) {
       await existing.remove().catch((error) => {
-        console.warn(`[queues] could not remove finished job ${jobId}: ${error.message}`);
+        console.warn(`[queues] could not remove job ${jobId} (state=${state}): ${error.message}`);
       });
     }
   }
