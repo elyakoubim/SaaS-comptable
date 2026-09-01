@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "worker": "node src/workers/scheduler.js",
     "auth:smoke": "node scripts/auth-smoke-test.mjs",
-    "mmf:scenarios": "node scripts/mmf-scenarios.mjs"
+    "mmf:scenarios": "node scripts/mmf-scenarios.mjs",
+    "mmf:control": "node scripts/mmf-control-values.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

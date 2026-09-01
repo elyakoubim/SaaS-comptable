@@ -177,8 +177,19 @@ async function main() {
     (r) => ({ ok: r.status === 200 && r.bytes > 1_000_000, note: `${(r.bytes / 1_048_576).toFixed(1)} Mo, ${r.contentType}` }),
     () => call(PM2, `${docs.content(D.pm3Big)}?ownerType=CBE&ownerIdentifier=${PM3}`, { accept: "application/pdf" }));
 
-  await scenario("S11", "PM2 — UUID inexistant → 400 attendu",
-    (r) => ({ ok: r.status === 400, note: `${r.status} — ${r.body?.detail || r.body?.title || "sans détail"}` }),
+  // ⚠️ Écart doc / implémentation constaté le 01/09/2026 : la documentation SPF
+  // annonce un 400 pour un document inexistant, l'API répond un 403
+  // « not allowed to access document … ». L'UUID de ce scénario est en réalité
+  // syntaxiquement valide (il ne diffère du document réel que par son dernier
+  // caractère), et l'API refuse l'accès sans révéler l'existence du document —
+  // comportement plus prudent que celui décrit. Les deux codes sont donc
+  // acceptés ici, et l'écart est signalé au SPF dans le rapport de validation.
+  await scenario("S11", "PM2 — document inexistant → rejet attendu (doc: 400, observé: 403)",
+    (r) => ({
+      ok: r.status === 400 || r.status === 403,
+      note: `${r.status} — ${r.body?.detail || r.body?.title || "sans détail"}` +
+        (r.status === 403 ? "  [écart avec la doc, qui annonce 400]" : "")
+    }),
     () => call(PM2, `${docs.content(D.invalidUuid)}?ownerType=CBE&ownerIdentifier=${PM3}`, { accept: "application/pdf" }));
 
   await scenario("S12", "PM2 — ownerType=CBE avec un identifiant SSIN → 400 attendu",
