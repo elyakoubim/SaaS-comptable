@@ -42,7 +42,18 @@ function buildRequestHeaders(accessToken, accept) {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: accept,
-      correlationId
+      // La passerelle du SPF répond 401 InboundAuthenticationFailure /
+      // "Mandatory headers are missing" quand il en manque un. La doc ne les
+      // liste pas ; les scénarios de test officiels ont été validés avec curl.
+      // On envoie donc ce que curl/un navigateur envoient naturellement et que
+      // le fetch natif de Node (undici) N'ENVOIE PAS :
+      "User-Agent": "Vatu/0.1 (+https://connect.vatu.be)",
+      // correlationId : nommé tel quel dans la doc MyMinfin. On envoie aussi la
+      // forme conventionnelle X-Correlation-Id, au cas où la passerelle attende
+      // celle-là. Même valeur, pour rester traçable côté helpdesk.
+      correlationId,
+      "X-Correlation-Id": correlationId,
+      "Accept-Language": "fr"
     }
   };
 }
