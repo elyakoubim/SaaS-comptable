@@ -78,8 +78,18 @@ async function parseProblemDetailBody(response) {
   try {
     bodyText = await response.text();
   } catch {
+    console.error(`[mmf] ${response.status} on ${response.url} — body unreadable`);
     return { title: null, detail: null, instance: null, status: null, raw: null };
   }
+
+  // Trace brute : sans elle, un 401/403 sans title/detail (rejet au niveau de la
+  // passerelle plutôt que de l'API) devient un message générique sans information.
+  console.error(
+    `[mmf] HTTP ${response.status} on ${response.url}\n` +
+      `  content-type: ${response.headers.get("content-type") || "(none)"}\n` +
+      `  www-authenticate: ${response.headers.get("www-authenticate") || "(none)"}\n` +
+      `  ----- body start -----\n${bodyText || "(empty)"}\n  ----- body end -----`
+  );
 
   if (!bodyText) {
     return { title: null, detail: null, instance: null, status: null, raw: null };
