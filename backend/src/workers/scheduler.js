@@ -1,7 +1,11 @@
 import "dotenv/config";
 import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.js";
-import { refreshExpiredMandants, refreshMandantByEcb } from "../services/fpsAuth.service.js";
+import {
+  getValidAccessToken,
+  refreshExpiredMandants,
+  refreshMandantByEcb
+} from "../services/fpsAuth.service.js";
 import { searchDocuments } from "../services/myMinfinClient.service.js";
 import { ApiError, AuthError, RateLimitError } from "../services/myMinfinErrors.js";
 import { classifyDocument } from "../services/documentClassifier.service.js";
@@ -48,49 +52,6 @@ await refreshQueue.upsertJobScheduler("hourly-token-refresh", {
   data: { source: "scheduler" }
 });
 
-// Marge de sécurité : on rafraîchit un peu avant l'expiration réelle, pour que
-// le token soit encore valide le temps de l'appel MyMinfin qui suit.
-const ACCESS_TOKEN_SAFETY_MARGIN_MS = 30 * 1000;
-
-/**
- * Récupère le token MyMinfin déchiffré pour un mandant, en le rafraîchissant
- * À LA DEMANDE s'il est expiré ou sur le point de l'être.
- *
- * ⚠️ Pourquoi à la demande et pas seulement via le cron : l'access token FedIAM
- * vit ~299 s (5 min), alors que le scheduler horaire ne passe que toutes les
- * heures. Un cron horaire ne peut donc PAS maintenir un access token vivant —
- * il ne sert qu'à garder le refresh token (7 jours) actif. Sans ce rafraîchissement
- * ici, toute synchro lancée plus de 5 minutes après une connexion échouait avec
- * "no_valid_token: access_token expired".
- */
-async function loadValidAccessToken(ecbNumber) {
-  let mandant = await findMandantByEcb(ecbNumber);
-  if (!mandant) {
-    throw new Error(`no_valid_token: mandant not found for ECB ${ecbNumber}`);
-  }
-
-  const expiry = mandant.token_expiry ? new Date(mandant.token_expiry).getTime() : 0;
-  const needsRefresh =
-    !mandant.access_token_encrypted ||
-    !expiry ||
-    expiry <= Date.now() + ACCESS_TOKEN_SAFETY_MARGIN_MS;
-
-  if (needsRefresh) {
-    if (!mandant.refresh_token_encrypted) {
-      throw new Error(`no_valid_token: no refresh_token to renew ECB ${ecbNumber}`);
-    }
-
-    console.log(`[doc-sync] access token expired/expiring for ${ecbNumber} — refreshing on demand`);
-    await refreshMandantByEcb(ecbNumber);
-
-    mandant = await findMandantByEcb(ecbNumber);
-    if (!mandant?.access_token_encrypted) {
-      throw new Error(`no_valid_token: refresh did not yield an access_token for ECB ${ecbNumber}`);
-    }
-  }
-
-  return decryptText(mandant.access_token_encrypted);
-}
 
 async function processDocumentSyncJob(job) {
   const ecbNumber = String(job.data?.ecbNumber || "");
@@ -102,7 +63,7 @@ async function processDocumentSyncJob(job) {
     throw new Error(`invalid ecbNumber in job data: "${ecbNumber}"`);
   }
 
-  const accessToken = await loadValidAccessToken(ecbNumber);
+  const accessToken = await getValidAccessToken(ecbNumber);
 
   try {
     const documents = await searchDocuments(accessToken, ecbNumber, since);

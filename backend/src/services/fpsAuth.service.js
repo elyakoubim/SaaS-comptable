@@ -333,4 +333,52 @@ async function refreshExpiredMandants() {
   }
 }
 
-export { buildAuthorizationUrl, exchangeAuthorizationCode, refreshMandantByEcb, refreshExpiredMandants };
+// Marge de sécurité : on rafraîchit un peu avant l'expiration réelle, pour que
+// le token soit encore valide le temps de l'appel MyMinfin qui suit.
+const ACCESS_TOKEN_SAFETY_MARGIN_MS = 30 * 1000;
+
+/**
+ * Token d'accès MyMinfin déchiffré pour un mandant, rafraîchi À LA DEMANDE
+ * s'il est expiré ou sur le point de l'être.
+ *
+ * ⚠️ L'access token FedIAM vit ~299 s (5 min) alors que le scheduler ne passe
+ * qu'une fois par heure : un cron horaire ne peut PAS le maintenir vivant, il
+ * ne sert qu'à garder le refresh token (7 jours) actif. Tout appel MyMinfin
+ * doit donc passer par ici, sinon il échoue dès 5 minutes après la connexion.
+ */
+async function getValidAccessToken(ecbNumber) {
+  let mandant = await findMandantByEcb(ecbNumber);
+  if (!mandant) {
+    throw new Error(`no_valid_token: mandant not found for ECB ${ecbNumber}`);
+  }
+
+  const expiry = mandant.token_expiry ? new Date(mandant.token_expiry).getTime() : 0;
+  const needsRefresh =
+    !mandant.access_token_encrypted ||
+    !expiry ||
+    expiry <= Date.now() + ACCESS_TOKEN_SAFETY_MARGIN_MS;
+
+  if (needsRefresh) {
+    if (!mandant.refresh_token_encrypted) {
+      throw new Error(`no_valid_token: no refresh_token to renew ECB ${ecbNumber}`);
+    }
+
+    console.log(`[fps] access token expired/expiring for ${ecbNumber} — refreshing on demand`);
+    await refreshMandantByEcb(ecbNumber);
+
+    mandant = await findMandantByEcb(ecbNumber);
+    if (!mandant?.access_token_encrypted) {
+      throw new Error(`no_valid_token: refresh did not yield an access_token for ECB ${ecbNumber}`);
+    }
+  }
+
+  return decryptText(mandant.access_token_encrypted);
+}
+
+export {
+  buildAuthorizationUrl,
+  exchangeAuthorizationCode,
+  getValidAccessToken,
+  refreshMandantByEcb,
+  refreshExpiredMandants
+};

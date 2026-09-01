@@ -7,6 +7,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { alertRouter } from "./routes/alert.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
+import { documentRouter } from "./routes/document.routes.js";
 import { fpsRouter } from "./routes/fps.routes.js";
 import { syncRouter } from "./routes/sync.routes.js";
 import { fpsConfig } from "./config/fps.config.js";
@@ -76,6 +77,7 @@ app.get("/.well-known/jwks.json", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/fps", fpsRouter);
 app.use("/api/alerts", alertRouter);
+app.use("/api/documents", documentRouter);
 app.use("/api/sync", syncRouter);
 
 if (hasFrontendBuild) {

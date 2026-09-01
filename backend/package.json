@@ -7,7 +7,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "worker": "node src/workers/scheduler.js",
-    "auth:smoke": "node scripts/auth-smoke-test.mjs"
+    "auth:smoke": "node scripts/auth-smoke-test.mjs",
+    "mmf:scenarios": "node scripts/mmf-scenarios.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
