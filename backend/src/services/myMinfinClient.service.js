@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { fpsConfig } from "../config/fps.config.js";
 import { ApiError, AuthError, RateLimitError } from "./myMinfinErrors.js";
 
@@ -22,6 +23,29 @@ import { ApiError, AuthError, RateLimitError } from "./myMinfinErrors.js";
  */
 
 const SEARCH_PATH = "/FineAPI/Generic/OAU/v2/documents";
+
+/**
+ * En-têtes obligatoires pour les API du SPF.
+ *
+ * ⚠️ `correlationId` n'est pas optionnel : sans lui la passerelle rejette la
+ * requête AVANT d'examiner le Bearer, avec
+ *   401 {"code":"InboundAuthenticationFailure","message":"Mandatory headers are missing"}
+ * ce qui ressemble trompeusement à un problème de token ou de scope.
+ * La doc MyMinfin le décrit comme « the UUID that is generated on your side in
+ * the HTTP headers each time you call the API » — un UUID neuf par appel, qui
+ * sert aussi à tracer la requête auprès du helpdesk.
+ */
+function buildRequestHeaders(accessToken, accept) {
+  const correlationId = crypto.randomUUID();
+  return {
+    correlationId,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: accept,
+      correlationId
+    }
+  };
+}
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function ensureNonEmptyString(value, label) {
@@ -171,13 +195,12 @@ async function searchDocuments(accessToken, cbe, since, owner = null) {
     url.searchParams.set("ownerIdentifier", scopedOwner.ownerIdentifier);
   }
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json"
-    }
-  });
+  const { headers, correlationId } = buildRequestHeaders(accessToken, "application/json");
+  const response = await fetch(url, { method: "GET", headers });
+
+  if (!response.ok) {
+    console.error(`[mmf] search failed — correlationId=${correlationId}`);
+  }
 
   if (response.status === 204) {
     return [];
@@ -262,13 +285,12 @@ async function downloadDocument(accessToken, uuid, owner = null) {
     url.searchParams.set("ownerIdentifier", documentOwner.ownerIdentifier);
   }
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/pdf"
-    }
-  });
+  const { headers, correlationId } = buildRequestHeaders(accessToken, "application/pdf");
+  const response = await fetch(url, { method: "GET", headers });
+
+  if (!response.ok) {
+    console.error(`[mmf] download failed — correlationId=${correlationId}`);
+  }
 
   if (response.status === 200) {
     let arrayBuffer;
