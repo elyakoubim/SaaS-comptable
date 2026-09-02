@@ -23,13 +23,16 @@ const endpoints = {
     authorization: process.env.FPS_AUTH_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2/authorize",
     token: process.env.FPS_TOKEN_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2/access_token",
     jwks: process.env.FPS_JWKS_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2/connect/jwk_uri",
-    mmf: process.env.FPS_MMF_BASE_URL_TEST || "https://wsapi-a.minfin.be"
+    mmf: process.env.FPS_MMF_BASE_URL_TEST || "https://wsapi-a.minfin.be",
+    // `iss` du id_token, relevé sur le document de découverte OIDC du SPF.
+    issuer: process.env.FPS_ISSUER_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2"
   },
   prod: {
     authorization: process.env.FPS_AUTH_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2/authorize",
     token: process.env.FPS_TOKEN_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2/access_token",
     jwks: process.env.FPS_JWKS_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2/connect/jwk_uri",
-    mmf: process.env.FPS_MMF_BASE_URL_PROD || "https://wsapi.minfin.fgov.be"
+    mmf: process.env.FPS_MMF_BASE_URL_PROD || "https://wsapi.minfin.fgov.be",
+    issuer: process.env.FPS_ISSUER_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2"
   }
 };
 
@@ -44,7 +47,10 @@ const fpsConfig = {
   keyId: process.env.FPS_KEY_ID || "",
   privateKeyPem: normalizePrivateKeyPem(process.env.FPS_PRIVATE_KEY_PEM),
   claimsEcbField: process.env.FPS_CLAIMS_ECB_FIELD || "ecb",
-  expectedIssuer: process.env.FPS_EXPECTED_ISSUER || "",
+  // Derive de FPS_ENV comme les autres endpoints : le basculement acceptation ->
+  // production ne doit rester qu'un seul interrupteur. FPS_EXPECTED_ISSUER reste
+  // accepte comme surcharge d'urgence, mais ne doit pas etre defini en temps normal.
+  expectedIssuer: process.env.FPS_EXPECTED_ISSUER || endpoints[fpsEnv].issuer,
   authUrl: endpoints[fpsEnv].authorization,
   tokenUrl: endpoints[fpsEnv].token,
   jwksUrl: endpoints[fpsEnv].jwks,
