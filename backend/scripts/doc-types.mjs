@@ -105,7 +105,12 @@ async function main() {
     FROM documents, LATERAL jsonb_array_elements(
       CASE WHEN jsonb_typeof(metadata) = 'array' THEN metadata ELSE '[]'::jsonb END
     ) AS item, LATERAL (
-      SELECT COALESCE(item->>'name', item->>'key', item->>'type') AS key
+      -- Metadata = {name: LocalizedString, values: [string]} (fineapi-v1.yaml).
+      -- Le champ name est un objet : le lire comme une chaine ne rend jamais rien.
+      SELECT COALESCE(
+        item->'name'->>'fr', item->'name'->>'nl',
+        item->'name'->>'en', item->'name'->>'de'
+      ) AS key
     ) k
     WHERE k.key IS NOT NULL
     GROUP BY key
