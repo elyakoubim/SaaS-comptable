@@ -22,7 +22,11 @@ const endpoints = {
   test: {
     authorization: process.env.FPS_AUTH_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2/authorize",
     token: process.env.FPS_TOKEN_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2/access_token",
-    jwks: process.env.FPS_JWKS_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2/connect/jwk_uri",
+    // Chemin AVEC le realm, tel que l'annonce le document de decouverte du SPF.
+    // Le chemin court /sso/oauth2/connect/jwk_uri sert les cles du realm racine,
+    // qui ne recouvrent que partiellement celles de /externalapi : l'id_token peut
+    // etre signe par une cle absente de cette liste, et la verification echouerait.
+    jwks: process.env.FPS_JWKS_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2/realms/root/realms/externalapi/connect/jwk_uri",
     mmf: process.env.FPS_MMF_BASE_URL_TEST || "https://wsapi-a.minfin.be",
     // `iss` du id_token, relevé sur le document de découverte OIDC du SPF.
     issuer: process.env.FPS_ISSUER_TEST_URL || "https://fediamapi-a.minfin.be/sso/oauth2"
@@ -30,7 +34,7 @@ const endpoints = {
   prod: {
     authorization: process.env.FPS_AUTH_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2/authorize",
     token: process.env.FPS_TOKEN_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2/access_token",
-    jwks: process.env.FPS_JWKS_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2/connect/jwk_uri",
+    jwks: process.env.FPS_JWKS_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2/realms/root/realms/externalapi/connect/jwk_uri",
     mmf: process.env.FPS_MMF_BASE_URL_PROD || "https://wsapi.minfin.fgov.be",
     issuer: process.env.FPS_ISSUER_PROD_URL || "https://fediamapi.minfin.fgov.be/sso/oauth2"
   }

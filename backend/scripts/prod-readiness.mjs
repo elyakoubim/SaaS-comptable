@@ -57,6 +57,17 @@ async function checkDiscovery() {
     warn("token endpoint différent de celui codé", d.token_endpoint);
   }
 
+  // Piege verifie le 02/09 : le chemin court /sso/oauth2/connect/jwk_uri sert les
+  // cles du realm racine, qui ne recouvrent que partiellement celles de /externalapi.
+  const EXPECTED_JWKS =
+    "https://fediamapi.minfin.fgov.be/sso/oauth2/realms/root/realms/externalapi/connect/jwk_uri";
+  if (d.jwks_uri === EXPECTED_JWKS) {
+    ok("jwks_uri conforme au chemin code (avec le realm)");
+  } else {
+    bad("jwks_uri annonce different de celui code", `${d.jwks_uri} vs ${EXPECTED_JWKS}`);
+    console.log("      -> la verification de signature de l'id_token utiliserait le mauvais jeu de cles.");
+  }
+
   const methods = d.token_endpoint_auth_methods_supported || [];
   if (methods.includes("private_key_jwt")) {
     ok("private_key_jwt supporté", methods.join(", "));
