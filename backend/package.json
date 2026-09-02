@@ -10,7 +10,8 @@
     "auth:smoke": "node scripts/auth-smoke-test.mjs",
     "mmf:scenarios": "node scripts/mmf-scenarios.mjs",
     "mmf:control": "node scripts/mmf-control-values.mjs",
-    "docs:types": "node scripts/doc-types.mjs"
+    "docs:types": "node scripts/doc-types.mjs",
+    "docs:samples": "node scripts/doc-samples.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -23,6 +24,7 @@
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "nv-saas": "file:..",
+    "pdf-parse": "1.1.1",
     "pg": "^8.13.0",
     "rate-limit-redis": "^4.2.0"
   },
