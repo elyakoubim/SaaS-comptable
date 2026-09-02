@@ -125,6 +125,27 @@ async function listRefreshCandidates(cutoffIsoDate) {
   return result.rows;
 }
 
+/**
+ * Mandants eligibles a une synchronisation documentaire recurrente.
+ *
+ * Critere : posseder un refresh token. Un mandant sans refresh token ne peut
+ * plus obtenir d'access token ; l'inclure ne produirait que des echecs.
+ *
+ * `last_sync_at` sert a calculer la fenetre incrementale : NULL signifie que le
+ * dossier n'a jamais ete collecte, et appelle donc une reprise sur toute la
+ * fenetre de retention du SPF plutot qu'un simple rattrapage.
+ */
+async function listSyncCandidates() {
+  const query = `
+    SELECT ecb_number, last_sync_at, status
+    FROM mandants
+    WHERE refresh_token_encrypted IS NOT NULL
+    ORDER BY last_sync_at ASC NULLS FIRST
+  `;
+  const result = await db.query(query);
+  return result.rows;
+}
+
 async function updateMandantStatus(ecbNumber, status) {
   const query = `
     UPDATE mandants
@@ -157,6 +178,7 @@ export {
   findMandantByEcb,
   listMandantsSummary,
   listRefreshCandidates,
+  listSyncCandidates,
   updateLastSyncAt,
   updateMandantStatus
 };

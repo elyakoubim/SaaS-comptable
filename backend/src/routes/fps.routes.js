@@ -26,7 +26,25 @@ fpsRouter.get("/connect/callback", async (req, res) => {
       return res.status(400).json({ message: "Missing code or state" });
     }
 
-    await exchangeAuthorizationCode({ code: String(code), state: String(state) });
+    const { ecbNumber } = await exchangeAuthorizationCode({
+      code: String(code),
+      state: String(state)
+    });
+
+    // Premiere collecte immediate. Sans elle, un dossier fraichement connecte
+    // reste vide jusqu'au balayage horaire suivant : le client voit « Connexion
+    // reussie » puis un tableau de bord desert, ce qui est le pire premier
+    // contact possible. Le worker calcule lui-meme la fenetre — 60 jours quand
+    // last_sync_at est nul, c'est-a-dire ici.
+    try {
+      const { enqueueDocumentSyncForMandant } = await import("../workers/queues.js");
+      await enqueueDocumentSyncForMandant(ecbNumber);
+      console.log(`[fps] initial document sync enqueued for ${ecbNumber}`);
+    } catch (syncError) {
+      // Redis indisponible ne doit pas transformer un consentement reussi en
+      // echec : le consentement est acquis, le balayage horaire rattrapera.
+      console.error(`[fps] could not enqueue initial sync for ${ecbNumber}: ${syncError.message}`);
+    }
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     return res.redirect(`${frontendUrl}/connect/success`);
