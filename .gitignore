@@ -34,3 +34,9 @@ backend/keys/generate-fps-keys.cjs
 
 # Documentation FPS - usage interne, ne pas committer
 docs/
+
+# Sorties de scripts (recoltes locales)
+*.log
+
+# Export local de l inventaire (donnees, pas de secrets) - ne pas committer
+documents-export*.json

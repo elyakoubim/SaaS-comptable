@@ -14,7 +14,9 @@
     "docs:samples": "node scripts/doc-samples.mjs",
     "docs:labels": "node scripts/doc-labels.mjs",
     "fps:probe-prod": "node scripts/prod-client-probe.mjs",
-    "fps:check-prod": "node scripts/prod-readiness.mjs"
+    "fps:check-prod": "node scripts/prod-readiness.mjs",
+    "docs:export": "node scripts/doc-export.mjs",
+    "sync:once": "node scripts/sync-once.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

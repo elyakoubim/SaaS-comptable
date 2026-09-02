@@ -1,0 +1,638 @@
+[
+ {
+  "n": 1722,
+  "fr": "Avis de paiement",
+  "nl": "Betaalbericht",
+  "de": "Zahlungsaufforderung"
+ },
+ {
+  "n": 633,
+  "fr": "Récapitulatif de votre demande - Attestation de non-activité (exonération de la cotisation à charge des sociétés – INASTI)",
+  "nl": "Samenvatting van uw aanvraag - Attest van non-activiteit (vrijstelling van de bijdrage ten laste van de vennootschappen – RSVZ)",
+  "de": "Zusammenfassung Ihres Antrags – Bescheinigung über die Nichtaktivität (Befreiung des Beitrags zu Lasten der Gesellschaften – LISVS)"
+ },
+ {
+  "n": 200,
+  "fr": "Attestation de résidence - entreprises - 276CONV",
+  "nl": "Woonplaatsattest - ondernemingen - 276CONV",
+  "de": "Bescheinigung des steuerlichen Wohnsitzes - UnternehmenEntscheidung - 276CONV"
+ },
+ {
+  "n": 192,
+  "fr": "XML formulaire CBC NOT",
+  "nl": "XML formulier CBC NOT",
+  "de": "XML formular CBC NOT"
+ },
+ {
+  "n": 164,
+  "fr": "Sommation",
+  "nl": "Aanmaning",
+  "de": "Mahnung"
+ },
+ {
+  "n": 162,
+  "fr": "Annexe - Attestation de non-activité (exonération de la cotisation à charge des sociétés – INASTI)",
+  "nl": "Bijlage - Attest van non-activiteit (vrijstelling van de bijdrage ten laste van de vennootschappen – RSVZ)",
+  "de": "Anhang - Bescheinigung über die Nichtaktivität (Befreiung des Beitrags zu Lasten der Gesellschaften – LISVS)"
+ },
+ {
+  "n": 108,
+  "fr": "Annexe de la demande pour les plaques commerciales",
+  "nl": "Bijlage bij de aanvraag voor commerciële platen",
+  "de": "Anhang zum Antrag für kommerzielle platten"
+ },
+ {
+  "n": 84,
+  "fr": "AC4 déclaration des droits d'accises",
+  "nl": "AC4 aangifte van accijnzen",
+  "de": "AC4 Angabe von Verbrauchsteuern"
+ },
+ {
+  "n": 50,
+  "fr": "Document annexé à une demande E705",
+  "nl": "Bijlage bij E705 aanvraag",
+  "de": "E705 Antrag - beigefügten Dokumenten"
+ },
+ {
+  "n": 47,
+  "fr": "Déclaration de stock Cliquet {CLIQUET_DECLARATION_REFERENCE}",
+  "nl": "Voorraadaangifte Cliquet {CLIQUET_DECLARATION_REFERENCE}",
+  "de": "Bestandsmeldung Cliquet {CLIQUET_DECLARATION_REFERENCE}"
+ },
+ {
+  "n": 46,
+  "fr": "Accusé de réception de la déclaration -  {FISC_EXERCISE_YEAR}",
+  "nl": "Ontvangstbewijs van de aangifte - {FISC_EXERCISE_YEAR}",
+  "de": "Empfangsbestätigung der Erklärung - {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 46,
+  "fr": "Rapports et délibérations assemblée générale -  {FISC_EXERCISE_YEAR}",
+  "nl": "Verslagen en besluiten algemene vergadering - {FISC_EXERCISE_YEAR}",
+  "de": "Berichte und Beschlüsse Generalversammlung - {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 41,
+  "fr": "Demande de documents pour la demande d’amendement/invalidation d’une déclaration d’export {DECLARATION_NUMBER}",
+  "nl": "Verzoek om documenten voor aanvraag inzake amendment/annulatie van de uitvoeraangifte {DECLARATION_NUMBER}",
+  "de": "Request documents for amendment or invalidation request of an export declaration {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 40,
+  "fr": "Demande de documents pour la demande d’amendement/invalidation d’une déclaration d'import  {DECLARATION_NUMBER}",
+  "nl": "Verzoek om documenten voor aanvraag inzake amendment/annulatie van de importaangifte {DECLARATION_NUMBER}",
+  "de": "Request documents for amendment or invalidation request of an import declaration {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 40,
+  "fr": "PDF de la déclaration -  {FISC_EXERCISE_YEAR}",
+  "nl": "PDF van de aangifte - {FISC_EXERCISE_YEAR}",
+  "de": "PDF-Datei der Erklärung - {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 33,
+  "fr": "Avertissement-extrait de rôle {FISC_EXERCISE_YEAR}",
+  "nl": "Aanslagbiljet {FISC_EXERCISE_YEAR}",
+  "de": "Steuerbescheid {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 31,
+  "fr": "Demande de données comptables BE SAF-T",
+  "nl": "Opvraging data boekhouding BE SAF-T",
+  "de": "Ersuchen um Buchhaltungsdaten BE SAF-T"
+ },
+ {
+  "n": 30,
+  "fr": "PDF - Accusé de réception global d'un consignment InterVat",
+  "nl": "PDF - Globale ontvangstbevestiging van een InterVat-zending",
+  "de": "Globale Empfangsbestätigung für eine InterVat-Sendung"
+ },
+ {
+  "n": 30,
+  "fr": "XML - Accusée de réception global d'un consignment InterVat",
+  "nl": "XML - Globale ontvangstbevestiging van een InterVat-zending",
+  "de": "XML-Globalbestätigung für den Erhalt einer InterVat-Sendung"
+ },
+ {
+  "n": 25,
+  "fr": "Demande de documents pour le control douanier {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "nl": "Verzoek om documenten voor douanecontrole {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "de": "Request documents for customs control {DECLARATION_NUMBER} - {DOCUMENT_ID}"
+ },
+ {
+  "n": 23,
+  "fr": "Récapitulatif de votre demande - Agrément ASBL - Dons",
+  "nl": "Samenvatting van uw aanvraag - Erkenning vzw’s - Giften",
+  "de": "Zusammenfassung Ihres Antrags – Zusammenfassung Ihres Antrags"
+ },
+ {
+  "n": 17,
+  "fr": "Demande de documents pour le control douanier (GIP) {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "nl": "Verzoek om documenten voor douanecontrole (GIP) {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "de": "Request documents for customs control (GIP) {DECLARATION_NUMBER} - {DOCUMENT_ID}"
+ },
+ {
+  "n": 15,
+  "fr": "Proposition de déclaration simplifiée {FISC_EXERCISE_YEAR}",
+  "nl": "Voorstel van vereenvoudigde aangifte {FISC_EXERCISE_YEAR}",
+  "de": "Voräschlag der vereinfachten Erklrung {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 15,
+  "fr": "Versements anticipés - Avantages",
+  "nl": "Voordelen van voorafbetalingen",
+  "de": "Vorauszahlungen - Vorteile"
+ },
+ {
+  "n": 14,
+  "fr": "Refus de la demande {DECLARATION_NUMBER}",
+  "nl": "Weigering van de aanvraag {DECLARATION_NUMBER}",
+  "de": "Ablehnung der Antrag {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 13,
+  "fr": "Avis d'imputation d'un remboursement",
+  "nl": "Bericht van aanwending van een teruggave",
+  "de": "Buchungsbenachrichtigung einer Erstattung"
+ },
+ {
+  "n": 11,
+  "fr": "Avertissement extrait de Rôle - {FISC_EXERCISE_YEAR}",
+  "nl": "Aanslagbiljet - {FISC_EXERCISE_YEAR}",
+  "de": "Steuerbescheid - {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 10,
+  "fr": "Annexe APT8 {FISC_EXERCISE_YEAR}",
+  "nl": "Bijlage APT8 {FISC_EXERCISE_YEAR}",
+  "de": "Anhang APT8  {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 10,
+  "fr": "Annexe APT9 {FISC_EXERCISE_YEAR}",
+  "nl": "Bijlage APT9 {FISC_EXERCISE_YEAR}",
+  "de": "Anhang APT9  {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 10,
+  "fr": "Annexe indemnité kilométrique forfaitaire {FISC_EXERCISE_YEAR}",
+  "nl": "Bijlage forfaitaire kilometervergoeding {FISC_EXERCISE_YEAR}",
+  "de": "Anlage pauschalen Kilometerentschädigung {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 10,
+  "fr": "Avertissement-extrait de rôle amende administrative impôt des personnes physiques",
+  "nl": "Aanslagbiljet administratieve boete personenbelasting",
+  "de": "Steuerbescheid administrative Geldbuße Steuer der natürlichen Personen"
+ },
+ {
+  "n": 10,
+  "fr": "Avertissement-extrait de rôle amende administrative précompte professionnel",
+  "nl": "Aanslagbiljet administratieve boete bedrijfsvoorheffing",
+  "de": "Steuerbescheid administrative Geldbuße Berufssteuervorabzug"
+ },
+ {
+  "n": 10,
+  "fr": "Demande 6 % TVA pour l’entretien d’un véhicule",
+  "nl": "Aanvraag 6 % btw voor onderhoud voertuig",
+  "de": "Antrag 6 % MwSt. bei Wartung eines Fahrzeugs"
+ },
+ {
+  "n": 10,
+  "fr": "Demande remboursement TVA à l’achat d’un véhicule",
+  "nl": "Aanvraag teruggave btw bij aankoop voertuig",
+  "de": "Antrag Erstattung MwSt. beim Kauf eines Fahrzeugs"
+ },
+ {
+  "n": 10,
+  "fr": "Formulaire de déclaration d’un bien à l’étranger.",
+  "nl": "Formulier voor aangifte van een goed in het buitenland.",
+  "de": "Meldeformular für ein ausländisches Gut"
+ },
+ {
+  "n": 10,
+  "fr": "Intention de refus pour la demande  {DECLARATION_NUMBER}",
+  "nl": "Intentie tot weigering van de aanvraag {DECLARATION_NUMBER}",
+  "de": "Absicht der Ablehnung des Antrags {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 9,
+  "fr": "Attestation de résidence - particuliers/indépendants -276CONV",
+  "nl": "Woonplaatsattest - particulieren/zelfstandigen -276CONV",
+  "de": "Bescheinigung des steuerlichen Wohnsitzes - Privatpersonen/Selbstständige - 276CONV"
+ },
+ {
+  "n": 8,
+  "fr": "Demande de documents pour la demande d’invalidation d’une déclaration AC4 {DECLARATION_NUMBER}",
+  "nl": "Verzoek om documenten voor aanvraag inzake annulatie van AC4 aangifte {DECLARATION_NUMBER}",
+  "de": "Request documents for invalidation request of AC4 declaration {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 8,
+  "fr": "Récapitulatif de votre demande - Autorisation E.T. 90.500 - entrepôt TVA",
+  "nl": "Samenvatting van uw aanvraag -   Vergunning E.T. 90.500 - btw-entrepot",
+  "de": "Zusammenfassung Ihres Antrags – Genehmigung E.T. 90.500 - MwSt.-Lager"
+ },
+ {
+  "n": 7,
+  "fr": "Aperçu des données validées pour un signal E705",
+  "nl": "Overzicht gevalideerde E705",
+  "de": "Bewährte E705 - Überblick"
+ },
+ {
+  "n": 7,
+  "fr": "Fichier téléchargé via MyMinfin",
+  "nl": "Document opgeladen via MyMinfin",
+  "de": "Datei-Upload über MyMinfin"
+ },
+ {
+  "n": 7,
+  "fr": "Précompte professionnel : Sommation de paiement",
+  "nl": "Bedrijfsvoorheffing: Aanmaning",
+  "de": "Berufssteuervorabzug: Mahnung"
+ },
+ {
+  "n": 7,
+  "fr": "Réclamation - Annexe - Impôts directs PP",
+  "nl": "Bezwaarschrift - Bijlage - Directe belastingen NP",
+  "de": "Widerspruch - Anlage - Direkte Steuern NP"
+ },
+ {
+  "n": 6,
+  "fr": "Acceptation de la recevabilité de la demande {DECLARATION_NUMBER}",
+  "nl": "Ontvankelijkheid aanvaard voor de aanvraag {DECLARATION_NUMBER}",
+  "de": "Annahme der Zulässigkeit des Antrags {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 6,
+  "fr": "Accusé de réception Pillar2 {FISC_TAX_TYPE} déclaration - {REPORTED_YEAR}",
+  "nl": "Ontvangsbevestiging Pillar2 {FISC_TAX_TYPE} Declaratie - {REPORTED_YEAR}",
+  "de": "Eingangsbestätigung Pillar2 {FISC_TAX_TYPE} Erklärung - {REPORTED_YEAR}"
+ },
+ {
+  "n": 6,
+  "fr": "Avertissement d'une possible décision négative relative à  {DECLARATION_NUMBER}",
+  "nl": "Waarschuwing over mogelijke negatieve beslissing met betrekking tot {DECLARATION_NUMBER}",
+  "de": "Warnung vor möglichen negativen Entscheidungen im Zusammenhang mit {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 6,
+  "fr": "Conventions {FISC_EXERCISE_YEAR}",
+  "nl": "Overeenkomsten {FISC_EXERCISE_YEAR}",
+  "de": "Verträge {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 6,
+  "fr": "Demande d'informations supplémentaires - Non Activité",
+  "nl": "Vraag om inlichtingen - Non-activiteit",
+  "de": "Ersuchen um Auskunft - Nichtaktivität"
+ },
+ {
+  "n": 5,
+  "fr": "Acte de caution",
+  "nl": "Borgstellingsakte",
+  "de": "Urkunde über die Hinterlegung einer Sicherheit"
+ },
+ {
+  "n": 5,
+  "fr": "Demande de documents manquants pour le control douanier {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "nl": "Verzoek om ontbrekende documenten voor douanecontrole {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "de": "Request missing documents for customs control {DECLARATION_NUMBER} - {DOCUMENT_ID}"
+ },
+ {
+  "n": 5,
+  "fr": "Demande de documents manquants {DECLARATION_NUMBER}",
+  "nl": "Verzoek om ontbrekende documenten {DECLARATION_NUMBER}",
+  "de": "Request missing documents {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 5,
+  "fr": "PRM - Avis de rectification 279",
+  "nl": "RV - Bericht van wijziging - 279",
+  "de": "MStV - Berichtigungsanzeige - 279"
+ },
+ {
+  "n": 5,
+  "fr": "Récapitulatif de votre demande - Autorisation ET14000",
+  "nl": "Samenvatting van uw aanvraag - Vergunning ET14000",
+  "de": "Zusammenfassung Ihres Antrags – Genehmigung ET14000"
+ },
+ {
+  "n": 5,
+  "fr": "Réponse à votre contact",
+  "nl": "Antwoord op uw contact",
+  "de": "Antwort auf Ihre Anfrage"
+ },
+ {
+  "n": 4,
+  "fr": "Accusé de réception DAC9/GIR déclaration - {REPORTED_YEAR}",
+  "nl": "Ontvangsbevestiging DAC9/GIR Declaratie - {REPORTED_YEAR}",
+  "de": "Eingangsbestätigung DAC9/GIR Erklärung - {REPORTED_YEAR}"
+ },
+ {
+  "n": 4,
+  "fr": "Annexe - Agrément ASBL - Dons",
+  "nl": "Bijlage - Erkenning vzw’s - Giften",
+  "de": "Anhang - Zulassung VoG - Spenden"
+ },
+ {
+  "n": 4,
+  "fr": "Annexe plan de réorganisation {FISC_EXERCISE_YEAR}",
+  "nl": "Bijlage reorganisatieplan {FISC_EXERCISE_YEAR}",
+  "de": "Anlage Reorganisationsplan {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 4,
+  "fr": "Décision favorable Remboursement Cliquet {CLIQUET_DECLARATION_REFERENCE}",
+  "nl": "Gunstige beslissing Terugbetaling Cliquet {CLIQUET_DECLARATION_REFERENCE}",
+  "de": "Begünstigende Entscheidung Erstattung Cliquet {CLIQUET_DECLARATION_REFERENCE}"
+ },
+ {
+  "n": 4,
+  "fr": "PRP - Demande de renseignements 332",
+  "nl": "BV - Vraag om inlichtingen 332",
+  "de": "BStV - Ersuchen um Auskunft 332"
+ },
+ {
+  "n": 4,
+  "fr": "UBO - notification de non-conformité",
+  "nl": "UBO - kennisgeving van niet-naleving",
+  "de": "UBU - Meldung der Nichteinhaltung"
+ },
+ {
+  "n": 3,
+  "fr": "Accusé de réception déclaration 111/2",
+  "nl": "Ontvangstbevestiging verklaring 111/2",
+  "de": "Empfangsbestätigung Erklärung 111/2"
+ },
+ {
+  "n": 3,
+  "fr": "Annexe tableau d'amortissements {FISC_EXERCISE_YEAR}",
+  "nl": "Bijlage afschrijvingstabel {FISC_EXERCISE_YEAR}",
+  "de": "Anlage Abschreibungstabelle {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 3,
+  "fr": "Demande de renseignement aux tiers",
+  "nl": "Vraag om inlichtingen aan derden",
+  "de": "Ersuchen um Auskunft an Dritte"
+ },
+ {
+  "n": 3,
+  "fr": "Décision - Attestation de non-activité (exonération de la cotisation à charge des sociétés – INASTI)",
+  "nl": "Beslissing - Attest van niet-activiteit (vrijstelling van de bijdrage ten laste van de vennootschappen – RSVZ)",
+  "de": "Entscheidung – Bescheinigung über die Nichtaktivität (Befreiung vom Beitrag zu Lasten der Gesellschaften – LISVS)"
+ },
+ {
+  "n": 3,
+  "fr": "Déclaration Cadastre - {PATDOC_PARCEL_ID}",
+  "nl": "Kadasteraangifte - {PATDOC_PARCEL_ID}",
+  "de": "Katastererklärung - {PATDOC_PARCEL_ID}"
+ },
+ {
+  "n": 3,
+  "fr": "Invitation à payer Cliquet {CLIQUET_DECLARATION_REFERENCE}",
+  "nl": "Uitnodiging tot betaling Cliquet {CLIQUET_DECLARATION_REFERENCE}",
+  "de": "Zahlungsaufforderung Cliquet {CLIQUET_DECLARATION_REFERENCE}"
+ },
+ {
+  "n": 3,
+  "fr": "PRP - Proposition d'accord",
+  "nl": "BV - Akkoordverklaring",
+  "de": "BStV - Einverständnis"
+ },
+ {
+  "n": 3,
+  "fr": "Rappel pour absence de déclaration {FISC_EXERCISE_YEAR}",
+  "nl": "Herinnering niet-indiening aangifte {FISC_EXERCISE_YEAR}",
+  "de": "Erinnerung Nichtabgabe der Erklärung {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 3,
+  "fr": "UBO - amende",
+  "nl": "UBO - boete",
+  "de": "UBU - Geldbuße"
+ },
+ {
+  "n": 3,
+  "fr": "Validation de la demande {DECLARATION_NUMBER}",
+  "nl": "Aanvaarding van de aanvraag {DECLARATION_NUMBER}",
+  "de": "Annahme des Antrags {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 2,
+  "fr": "Attribution de numéro BCE Pillar2 - [{LANGUAGE}]",
+  "nl": "Toewijzing van KBO-nummer Pillar2 - [{LANGUAGE}]",
+  "de": "Zuweisung ZDU-Nummer Pillar2 - [{LANGUAGE}]"
+ },
+ {
+  "n": 2,
+  "fr": "Autres annexes {FISC_EXERCISE_YEAR}",
+  "nl": "Andere bijlagen {FISC_EXERCISE_YEAR}",
+  "de": "Andere Anhänge {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 2,
+  "fr": "Avis de paiement en cas d'application de l'article 415",
+  "nl": "Betaalbericht in geval van toepassing van artikel 415",
+  "de": "Zahlungsaufforderung bei Anwendung des Artikels 415"
+ },
+ {
+  "n": 2,
+  "fr": "D&A additional information about the authorisations for the EO",
+  "nl": "D&A additional information about the authorisations for the EO",
+  "de": "D&A additional information about the authorisations for the EO"
+ },
+ {
+  "n": 2,
+  "fr": "Demande de documents pour le control douanier  (GIP) {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "nl": "Verzoek om documenten voor douanecontrole (GIP) {DECLARATION_NUMBER} - {DOCUMENT_ID}",
+  "de": "Request documents for customs control (GIP) {DECLARATION_NUMBER} - {DOCUMENT_ID}"
+ },
+ {
+  "n": 2,
+  "fr": "Documents complémentaires requis par le PCI {DECLARATION_NUMBER}",
+  "nl": "Bijkomende documenten gevraagd door PCI {DECLARATION_NUMBER}",
+  "de": "Zusätzliche von PCI angeforderte Unterlagen {DECLARATION_NUMBER}"
+ },
+ {
+  "n": 2,
+  "fr": "Déclaration fiscale (via Tax-on-web Téléphonie) {FISC_EXERCISE_YEAR}",
+  "nl": "Belastingaangifte (via Tax-on-web Telefonie) {FISC_EXERCISE_YEAR}",
+  "de": "Steuererklärung (über Tax-on-web - Telefonisch) {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 2,
+  "fr": "PRP - Avis de rectification 279",
+  "nl": "BV - Bericht van wijziging - 279",
+  "de": "BStV - Berichtigungsanzeige - 279"
+ },
+ {
+  "n": 2,
+  "fr": "Saisie-arrêt exécution",
+  "nl": "Uitvoerend beslag onder derden",
+  "de": "Drittvollstreckungspfändung"
+ },
+ {
+  "n": 2,
+  "fr": "Supporting document",
+  "nl": "Supporting document",
+  "de": "Supporting document"
+ },
+ {
+  "n": 2,
+  "fr": "UBO - demande d'information",
+  "nl": "UBO - verzoek om informatie",
+  "de": "UBU - Auskunftsersuchen"
+ },
+ {
+  "n": 2,
+  "fr": "{CADEX-MMF-NUMBER}_ {CADEX-MMF-PRODUCT} Extrait Cadastral",
+  "nl": "{CADEX-MMF-NUMBER}_ {CADEX-MMF-PRODUCT} Kadastraal uittreksel",
+  "de": "{CADEX-MMF-NUMBER}_ {CADEX-MMF-PRODUCT} Katasterauszug"
+ },
+ {
+  "n": 1,
+  "fr": "Accusé de réception DAC6/MDR Déclaration -  {REPORTED_YEAR}",
+  "nl": "Ontvangsbevestiging DAC6/MDR Declaratie - {REPORTED_YEAR}",
+  "de": "Eingangsbestätigung DAC6/MDR Erklärung - {REPORTED_YEAR}"
+ },
+ {
+  "n": 1,
+  "fr": "Annexe -   Autorisation E.T. 90.500 - entrepôt TVA",
+  "nl": "Bijlage -   Vergunning E.T. 90.500 - btw-entrepot",
+  "de": "Anhang - Genehmigung E.T. 90.500 - MwSt.-Lager"
+ },
+ {
+  "n": 1,
+  "fr": "Annexe des dépenses non admises {FISC_EXERCISE_YEAR}",
+  "nl": "Bijlage verworpen uitgaven  {FISC_EXERCISE_YEAR}",
+  "de": "Anlage Nicht zugelassene Ausgaben {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 1,
+  "fr": "Attachement Declaration Pillar2 - [{LANGUAGE}]",
+  "nl": "Bijlage Declaration Pillar2 - [{LANGUAGE}]",
+  "de": "Anhang Declaration Pillar2 - [{LANGUAGE}]"
+ },
+ {
+  "n": 1,
+  "fr": "Avis d'imposition d’office (279E1) - {FISC_EXERCISE_YEAR}",
+  "nl": "Bericht van aanslag van ambtswege (279E1) - {FISC_EXERCISE_YEAR}",
+  "de": "Veranlagung von Amts wegen (279E1) - {FISC_EXERCISE_YEAR}"
+ },
+ {
+  "n": 1,
+  "fr": "Avis de paiement",
+  "nl": "Betalingsbericht",
+  "de": "Zahlungsavis"
+ },
+ {
+  "n": 1,
+  "fr": "Contrat de bail",
+  "nl": "Huurcontract",
+  "de": "Mietvertrag"
+ },
+ {
+  "n": 1,
+  "fr": "Contre-dénonciation de la saisie-arrêt exécution",
+  "nl": "Tegenaanzegging van een uitvoerend beslag onder derden",
+  "de": "Gegenmitteilung einer Drittvollstreckungspfändung"
+ },
+ {
+  "n": 1,
+  "fr": "Demande d'informations supplémentaires - Agrément ASBL - Dons",
+  "nl": "Vraag om inlichtingen -  Erkenning vzw’s - Giften",
+  "de": "Ersuchen um Auskunft - Zulassung VoG - Spenden"
+ },
+ {
+  "n": 1,
+  "fr": "Demande d'informations supplémentaires - ET14000",
+  "nl": "Vraag om inlichtingen - ET14000",
+  "de": "Ersuchen um Auskunft - ET14000"
+ },
+ {
+  "n": 1,
+  "fr": "Demande d'informations supplémentaires - Plaques commerciales",
+  "nl": "Vraag om inlichtingen - Commerciele nummerplaten",
+  "de": "Ersuchen um Auskunft - Kommerzielles Nummernschild"
+ },
+ {
+  "n": 1,
+  "fr": "Demande d’ouverture d’un dossier à la CDC",
+  "nl": "Verzoek tot het openen van een dossier bij de DCK",
+  "de": "Antrag auf Eröffnung einer Akte bei der HKK"
+ },
+ {
+  "n": 1,
+  "fr": "Décision - Agrément ASBL - Dons",
+  "nl": "Beslissing - Erkenning vzw’s - Giften",
+  "de": "Entscheidung - Zulassung VoG - Spenden"
+ },
+ {
+  "n": 1,
+  "fr": "Déclaration de tiers-saisi : rappel",
+  "nl": "Verklaring van derde-beslagene: herinnering",
+  "de": "Erklärung des Drittgepfändeten: Erinnerung"
+ },
+ {
+  "n": 1,
+  "fr": "Etat des lieux",
+  "nl": "Plaatsbeschrijving",
+  "de": "Ortsbefund"
+ },
+ {
+  "n": 1,
+  "fr": "Liste de frais de poursuites",
+  "nl": "Lijst van vervolgingskosten",
+  "de": "Liste der Betreibungskosten"
+ },
+ {
+  "n": 1,
+  "fr": "PRM - Demande de renseignements 332",
+  "nl": "RV - Vraag om inlichtingen 332",
+  "de": "MStV - Ersuchen um Auskunft 332"
+ },
+ {
+  "n": 1,
+  "fr": "Rapport d’audit opérateur",
+  "nl": "Auditrapport operator",
+  "de": "Auditbericht Wirtschaftsbeteiligter"
+ },
+ {
+  "n": 1,
+  "fr": "Relation d'enregistrement du contrat de bail.",
+  "nl": "Registratierelaas van het huurcontract",
+  "de": "Registrierungsbericht des Mietvertrags"
+ },
+ {
+  "n": 1,
+  "fr": "Relation d’enregistrement de l’état des lieux",
+  "nl": "Registratierelaas van de plaatsbeschrijving",
+  "de": "Registrierungsbericht des Ortsbefunds"
+ },
+ {
+  "n": 1,
+  "fr": "Réclamation - Impôts directs PM",
+  "nl": "Bezwaarschrift - Directe belastingen RP",
+  "de": "Widerspruch - Direkte Steuern JP"
+ },
+ {
+  "n": 1,
+  "fr": "Temporary docType with reminder option for VP test purpose",
+  "nl": "Temporary docType with reminder option for VP test purpose",
+  "de": "Temporary docType with reminder option for VP test purpose"
+ },
+ {
+  "n": 1,
+  "fr": "UBO - exemption",
+  "nl": "UBO - ontheffing",
+  "de": "UBU - Freistellung"
+ },
+ {
+  "n": 1,
+  "fr": "avis d’amende {FISC_EXERCISE_YEAR}",
+  "nl": "Boetebericht {FISC_EXERCISE_YEAR}",
+  "de": "Geldbußenbescheid {FISC_EXERCISE_YEAR}"
+ }
+]

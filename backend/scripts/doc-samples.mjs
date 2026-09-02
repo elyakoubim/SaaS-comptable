@@ -23,6 +23,20 @@ import { db } from "../src/config/db.js";
 import { getValidAccessToken } from "../src/services/fpsAuth.service.js";
 import { downloadDocument } from "../src/services/myMinfinClient.service.js";
 
+
+import fs from "node:fs";
+import { format } from "node:util";
+
+// Journal ecrit par le script lui-meme, en UTF-8 : la redirection PowerShell
+// produirait de l'UTF-16 et abimerait les accents.
+const LOG_PATH = process.env.LOG_FILE || "samples.log";
+const logStream = fs.createWriteStream(LOG_PATH, { encoding: "utf8" });
+const printToTerminal = console.log.bind(console);
+console.log = (...args) => {
+  const line = format(...args);
+  printToTerminal(line);
+  logStream.write(line + "\n");
+};
 const require = createRequire(import.meta.url);
 
 const LIMIT = Number.parseInt(process.argv[2] || "12", 10);
@@ -32,6 +46,10 @@ const PAUSE_MS = 15_000;
 const EXCERPT = Number.parseInt(process.env.SAMPLE_CHARS || "2400", 10);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Sortie structuree, en plus du journal : evite toute recopie manuelle ensuite.
+const JSON_PATH = process.env.SAMPLES_JSON || "samples.json";
+const collected = [];
 
 /** "0662348959" et "662348959" désignent la même entreprise. */
 const sameEntity = (a, b) =>
@@ -78,7 +96,9 @@ async function main() {
     [FILTER]
   );
 
-  const picked = rows.sort((a, b) => b.total - a.total).slice(0, LIMIT);
+  // SKIP permet de reprendre une recolte interrompue sans retelecharger.
+  const SKIP = Number.parseInt(process.env.SKIP || "0", 10);
+  const picked = rows.sort((a, b) => b.total - a.total).slice(SKIP, LIMIT);
 
   console.log(`\n═══ Échantillons de documents — ${picked.length} types ═══`);
   console.log(`(un exemplaire par type, le plus récent ; ~15 s entre chaque appel)\n`);
@@ -103,6 +123,14 @@ async function main() {
     try {
       const token = await getValidAccessToken(doc.mandant_ecb);
       const { content, contentType, extension } = await downloadDocument(token, doc.uuid, owner);
+      const entry = {
+        type: doc.type, total: doc.total, uuid: doc.uuid,
+        mandant: doc.mandant_ecb, ownerType: doc.owner_type,
+        ownerIdentifier: doc.owner_identifier,
+        documentDate: doc.document_date, bytes: content.length,
+        contentType, extension, pages: null, text: null
+      };
+      collected.push(entry);
       console.log(`${content.length} octets · ${contentType}${extension ? ` (.${extension})` : ""}`);
 
       if (!pdfParse) {
@@ -112,6 +140,8 @@ async function main() {
       } else {
         const parsed = await pdfParse(content);
         const text = tidy(parsed.text);
+        entry.pages = parsed.numpages;
+        entry.text = text;
         console.log(`${parsed.numpages} page(s), ${text.length} caractères de texte`);
         console.log("──── texte ────");
         console.log(text.slice(0, EXCERPT) || "(aucun texte extractible — document scanné ?)");
@@ -129,8 +159,9 @@ async function main() {
     }
   }
 
+  fs.writeFileSync(JSON_PATH, JSON.stringify(collected, null, 1), "utf8");
   console.log("\n" + "═".repeat(100));
-  console.log("Terminé.\n");
+  console.log(`Terminé. ${collected.length} documents dans ${JSON_PATH}.\n`);
   await db.end();
 }
 

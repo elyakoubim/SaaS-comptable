@@ -23,19 +23,42 @@ import { db } from "../src/config/db.js";
 import { getValidAccessToken } from "../src/services/fpsAuth.service.js";
 import { searchDocuments } from "../src/services/myMinfinClient.service.js";
 
+
+import fs from "node:fs";
+import { format } from "node:util";
+
+// Journal ecrit par le script lui-meme, en UTF-8 : la redirection PowerShell
+// produirait de l'UTF-16 et abimerait les accents.
+const LOG_PATH = process.env.LOG_FILE || "labels.log";
+const logStream = fs.createWriteStream(LOG_PATH, { encoding: "utf8" });
+const printToTerminal = console.log.bind(console);
+console.log = (...args) => {
+  const line = format(...args);
+  printToTerminal(line);
+  logStream.write(line + "\n");
+};
 const SEARCH_COOLDOWN_MS = 10 * 60 * 1000 + 15_000;
 const LANGS = ["fr", "nl", "de", "en"];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// searchDocuments() appelle since.toISOString() : il lui faut un objet Date,
+// pas une chaine. Passer "2026-07-09" leve "since must be a valid Date".
 function since(days = 55) {
-  return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+  return new Date(Date.now() - days * 86_400_000);
 }
 
 async function main() {
-  const { rows: mandants } = await db.query(
+  // Arguments : des CBE a interroger. Sans argument, tous les mandants connus.
+  // Utile pour reprendre un dossier ayant echoue sans re-consommer le quota
+  // (1 recherche / 10 min) des dossiers deja interroges.
+  const ONLY = process.argv.slice(2).filter((a) => /^\d{10}$/.test(a));
+  const { rows: allMandants } = await db.query(
     `SELECT DISTINCT mandant_ecb FROM documents ORDER BY mandant_ecb`
   );
+  const mandants = ONLY.length
+    ? allMandants.filter((m) => ONLY.includes(m.mandant_ecb))
+    : allMandants;
 
   if (!mandants.length) {
     console.log("Aucun mandant avec des documents en base.");
@@ -50,16 +73,32 @@ async function main() {
   const byType = new Map();
 
   for (const [index, { mandant_ecb: ecb }] of mandants.entries()) {
-    if (index > 0) {
-      console.log(`⏳ quota : attente 10 min avant la recherche suivante…`);
-      await sleep(SEARCH_COOLDOWN_MS);
-    }
+    // Le quota (1 recherche / 10 min) s'applique PAR DOSSIER : deux mandants
+    // differents ne se genent pas. Une courte pause suffit ; le rattrapage
+    // long n'intervient qu'en cas de refus effectif.
+    if (index > 0) await sleep(30_000);
 
-    process.stdout.write(`Recherche sur ${ecb}… `);
+    console.log(`Recherche sur ${ecb}…`);
     try {
       const token = await getValidAccessToken(ecb);
-      const docs = await searchDocuments(token, ecb, since());
-      console.log(`${docs.length} documents`);
+      let docs;
+      try {
+        docs = await searchDocuments(token, ecb, since());
+      } catch (first) {
+        if (/ECONNRESET|ETIMEDOUT|ENOTFOUND|fetch failed|socket/i.test(first.message)) {
+          // Incident reseau passager : nouvel essai rapide, pas d'attente quota.
+          console.log(`   incident reseau (${first.message}) — nouvel essai dans 20 s`);
+          await sleep(20_000);
+          docs = await searchDocuments(await getValidAccessToken(ecb), ecb, since());
+        } else if (/429|quota|rate|too many/i.test(first.message)) {
+          console.log(`   quota atteint — nouvel essai dans 10 min`);
+          await sleep(SEARCH_COOLDOWN_MS);
+          docs = await searchDocuments(await getValidAccessToken(ecb), ecb, since());
+        } else {
+          throw first;
+        }
+      }
+      console.log(`   ${docs.length} documents`);
 
       for (const doc of docs) {
         const name = doc?.raw?.docType?.name;
