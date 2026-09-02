@@ -28,7 +28,8 @@ const require = createRequire(import.meta.url);
 const LIMIT = Number.parseInt(process.argv[2] || "12", 10);
 const FILTER = (process.argv[3] || "").toLowerCase();
 const PAUSE_MS = 15_000;
-const EXCERPT = 1400;
+// Assez pour couvrir la premiere page : montant, echeance, reference de paiement.
+const EXCERPT = Number.parseInt(process.env.SAMPLE_CHARS || "2400", 10);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
