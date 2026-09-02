@@ -13,7 +13,8 @@
     "docs:types": "node scripts/doc-types.mjs",
     "docs:samples": "node scripts/doc-samples.mjs",
     "docs:labels": "node scripts/doc-labels.mjs",
-    "fps:probe-prod": "node scripts/prod-client-probe.mjs"
+    "fps:probe-prod": "node scripts/prod-client-probe.mjs",
+    "fps:check-prod": "node scripts/prod-readiness.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
