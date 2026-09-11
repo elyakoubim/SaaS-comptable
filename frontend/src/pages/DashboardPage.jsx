@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchMandants } from "../api";
+import { fetchMandants, forceSync } from "../api";
+
+// Quota SPF : une recherche par dossier et par tranche de 10 minutes. Le bouton
+// se désarme tout seul pendant ce délai — mieux vaut un bouton grisé qu'un 429
+// renvoyé par l'administration.
+const SYNC_COOLDOWN_MS = 10 * 60 * 1000;
 
 function statusTone(status) {
   if (status === "alert") {
@@ -18,10 +23,25 @@ function formatDate(value) {
   return new Date(value).toLocaleString("fr-BE");
 }
 
+function cooldownRemainingMs(lastSyncAt) {
+  if (!lastSyncAt) return 0;
+  const elapsed = Date.now() - new Date(lastSyncAt).getTime();
+  return Math.max(0, SYNC_COOLDOWN_MS - elapsed);
+}
+
+function formatCooldown(ms) {
+  const minutes = Math.ceil(ms / 60_000);
+  return `${minutes} min`;
+}
+
 function DashboardPage() {
   const [mandants, setMandants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [syncingEcb, setSyncingEcb] = useState("");
+  const [syncFeedback, setSyncFeedback] = useState({});
+  // Force un recalcul du compte à rebours sans refaire d'appel réseau.
+  const [, setTick] = useState(0);
 
   async function load() {
     try {
@@ -40,6 +60,33 @@ function DashboardPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick((value) => value + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  async function handleSync(ecbNumber) {
+    try {
+      setSyncingEcb(ecbNumber);
+      setSyncFeedback((current) => ({ ...current, [ecbNumber]: null }));
+      await forceSync(ecbNumber);
+      setSyncFeedback((current) => ({
+        ...current,
+        [ecbNumber]: { tone: "ok", text: "Synchronisation lancée. Le résultat arrive d'ici une minute." }
+      }));
+      // La synchronisation passe par la file d'attente : on laisse au worker le
+      // temps de faire son travail avant de relire l'état.
+      setTimeout(load, 20_000);
+    } catch (err) {
+      setSyncFeedback((current) => ({
+        ...current,
+        [ecbNumber]: { tone: "error", text: err.message || "Synchronisation impossible" }
+      }));
+    } finally {
+      setSyncingEcb("");
+    }
+  }
 
   const metrics = useMemo(() => {
     const totals = {
@@ -65,8 +112,8 @@ function DashboardPage() {
   return (
     <section className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-soft backdrop-blur">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Dossiers</p>
+        <article className="rounded-2xl border border-line bg-white p-4 shadow-soft">
+          <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Dossiers</p>
           <p className="mt-2 font-display text-3xl font-semibold">{metrics.total}</p>
         </article>
         <article className="rounded-2xl border border-emerald-200 bg-emerald-50/85 p-4 shadow-soft">
@@ -83,49 +130,92 @@ function DashboardPage() {
         </article>
       </div>
 
-      <article className="rounded-3xl border border-white/85 bg-white/85 p-5 shadow-floating backdrop-blur sm:p-6">
+      <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-semibold">Vue cabinet</h2>
-            <p className="text-sm text-slate-600">Etat de vos mandants synchronises avec FPS.</p>
+            <h2 className="font-display text-xl font-semibold">Vos dossiers</h2>
+            <p className="text-sm text-gray-600">Vos dossiers, tels que MyMinfin les a livrés.</p>
           </div>
           <button
-            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50"
+            className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             onClick={load}
             type="button"
           >
-            Rafraichir
+            Rafraîchir
           </button>
         </div>
 
-        {loading && <p className="text-slate-500">Chargement en cours...</p>}
+        {loading && <p className="text-gray-500">Chargement en cours…</p>}
         {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{error}</p>}
 
         {!loading && mandants.length === 0 && !error && (
-          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-            Aucun mandant disponible pour le moment.
+          <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+            Aucun dossier connecté pour le moment.
           </p>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {mandants.map((mandant) => (
-            <article
-              className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-soft transition hover:-translate-y-1"
-              key={mandant.ecbNumber}
-            >
-              <div className="mb-2 flex items-start justify-between gap-3">
-                <h3 className="font-display text-lg font-semibold leading-tight">{mandant.companyName || "Entreprise"}</h3>
-                <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${statusTone(mandant.status)}`}>
-                  {mandant.status || "ok"}
-                </span>
-              </div>
-              <p className="text-sm text-slate-600">BCE: {mandant.ecbNumber}</p>
-              <p className="mt-1 text-sm text-slate-600">Alertes actives: {mandant.activeAlertCount ?? 0}</p>
-              <p className="mt-1 text-sm text-slate-600">Consentement: {formatDate(mandant.consentGivenAt)}</p>
-              <p className="mt-1 text-sm text-slate-600">Derniere sync: {formatDate(mandant.lastSyncAt)}</p>
-            </article>
-          ))}
+          {mandants.map((mandant) => {
+            const remaining = cooldownRemainingMs(mandant.lastSyncAt);
+            const isSyncing = syncingEcb === mandant.ecbNumber;
+            const disabled = isSyncing || remaining > 0;
+            const feedback = syncFeedback[mandant.ecbNumber];
+
+            return (
+              <article
+                className="flex flex-col rounded-2xl border border-gray-200/70 bg-white p-4 shadow-soft transition hover:border-gray-300"
+                key={mandant.ecbNumber}
+              >
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <h3 className="font-display text-lg font-semibold leading-tight">{mandant.companyName || "Entreprise"}</h3>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${statusTone(mandant.status)}`}>
+                    {mandant.status || "ok"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">BCE: {mandant.ecbNumber}</p>
+                <p className="mt-1 text-sm text-gray-600">Alertes actives: {mandant.activeAlertCount ?? 0}</p>
+                <p className="mt-1 text-sm text-gray-600">Consentement: {formatDate(mandant.consentGivenAt)}</p>
+                <p className="mt-1 text-sm text-gray-600">Derniere sync: {formatDate(mandant.lastSyncAt)}</p>
+
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <button
+                    className={`w-full rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                      disabled
+                        ? "cursor-not-allowed border border-line bg-gray-50 text-gray-400"
+                        : "bg-accent text-white shadow-soft hover:bg-accent-strong"
+                    }`}
+                    disabled={disabled}
+                    onClick={() => handleSync(mandant.ecbNumber)}
+                    type="button"
+                  >
+                    {isSyncing
+                      ? "Synchronisation…"
+                      : remaining > 0
+                        ? `Disponible dans ${formatCooldown(remaining)}`
+                        : "Synchroniser"}
+                  </button>
+
+                  {feedback && (
+                    <p
+                      className={`mt-2 rounded-xl px-3 py-2 text-xs ${
+                        feedback.tone === "ok"
+                          ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border border-red-200 bg-red-50 text-red-700"
+                      }`}
+                    >
+                      {feedback.text}
+                    </p>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
+
+        <p className="mt-4 text-xs text-gray-500">
+          Le SPF n'autorise qu'une recherche par dossier toutes les 10 minutes. Une synchronisation
+          automatique tourne de toute façon chaque heure.
+        </p>
       </article>
     </section>
   );

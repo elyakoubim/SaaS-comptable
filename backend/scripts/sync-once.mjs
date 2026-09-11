@@ -19,7 +19,7 @@ import { fpsConfig } from "../src/config/fps.config.js";
 import { db } from "../src/config/db.js";
 import { getValidAccessToken } from "../src/services/fpsAuth.service.js";
 import { searchDocuments } from "../src/services/myMinfinClient.service.js";
-import { classifyDocument } from "../src/services/documentClassifier.service.js";
+import { classifyDocument, buildAlertTitle } from "../src/services/documentClassifier.service.js";
 import { findMandantByEcb, updateLastSyncAt } from "../src/repositories/mandant.repository.js";
 import { upsertDocument } from "../src/repositories/document.repository.js";
 import { createAlert, existsForDocument } from "../src/repositories/alert.repository.js";
@@ -83,12 +83,16 @@ async function syncOne(ECB) {
     });
 
     if (isNew) {
-      const { level, titleKey } = classifyDocument(doc.documentType);
+      const { level, titleKey, category } = classifyDocument(
+        doc.documentTypeLabels || doc.documentType
+      );
       await createAlert({
         mandantEcb: ECB,
         niveau: level,
-        titre: `[${titleKey}] ${doc.documentType || "document"}`,
-        detail: doc.documentDate ? `Date: ${doc.documentDate}` : null,
+        titre: buildAlertTitle(titleKey, doc.documentType),
+        detail: [`Catégorie : ${category}`, doc.documentDate ? `Date : ${doc.documentDate}` : null]
+          .filter(Boolean)
+          .join(" · "),
         documentFpsId: doc.uuid,
         documentTypeFps: doc.documentType,
         documentDate: doc.documentDate

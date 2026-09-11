@@ -8,7 +8,7 @@ function levelTone(level) {
   if (level === "warning") {
     return "border-amber-200 bg-amber-50 text-warning";
   }
-  return "border-cyan-200 bg-cyan-50 text-accent";
+  return "border-accent-line bg-accent-soft text-accent-strong";
 }
 
 function formatDate(value) {
@@ -69,26 +69,26 @@ function AlertsPage() {
 
   return (
     <section className="space-y-5">
-      <article className="rounded-3xl border border-white/85 bg-white/85 p-5 shadow-floating backdrop-blur sm:p-6">
+      <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-xl font-semibold">Alertes fiscales</h2>
-            <p className="text-sm text-slate-600">
-              Signaux prioritaires remontes depuis FPS MyMinfin. Total alertes actives: {total}
+            <p className="text-sm text-gray-600">
+              Ce qui demande une décision, remonté depuis MyMinfin. Alertes actives : {total}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {[
               { key: "all", label: "Toutes" },
-              { key: "critical", label: "Critical" },
-              { key: "warning", label: "Warning" },
-              { key: "info", label: "Info" }
+              { key: "critical", label: "Critiques" },
+              { key: "warning", label: "À traiter" },
+              { key: "info", label: "Information" }
             ].map((entry) => (
               <button
                 className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === entry.key
-                    ? "bg-ink text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "border border-accent-line bg-accent-soft text-accent-strong"
+                    : "border border-line bg-white text-muted hover:bg-gray-50 hover:text-ink"
                 }`}
                 key={entry.key}
                 onClick={() => setFilter(entry.key)}
@@ -101,7 +101,7 @@ function AlertsPage() {
         </div>
 
         {loading && (
-          <p className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <p className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
             Chargement...
           </p>
         )}
@@ -113,7 +113,7 @@ function AlertsPage() {
         )}
 
         {!loading && !error && alerts.length === 0 && (
-          <p className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <p className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
             Aucune alerte.
           </p>
         )}
@@ -121,15 +121,15 @@ function AlertsPage() {
         {!loading && alerts.length > 0 && (
           <div className="grid gap-3">
             {alerts.map((alert) => (
-              <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft" key={alert.id}>
+              <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-soft" key={alert.id}>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-display text-lg font-semibold">{alert.title}</h3>
                   <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${levelTone(alert.level)}`}>
                     {alert.level}
                   </span>
                 </div>
-                {alert.detail && <p className="text-sm text-slate-700">{alert.detail}</p>}
-                <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+                {alert.detail && <p className="text-sm text-gray-700">{alert.detail}</p>}
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
                   <span>Mandant: {alert.companyName || alert.mandantEcb}</span>
                   <span>BCE: {alert.mandantEcb}</span>
                   <span>Date document: {formatDate(alert.documentDate)}</span>
@@ -138,7 +138,7 @@ function AlertsPage() {
                 {alert.status === "active" && (
                   <div className="mt-3">
                     <button
-                      className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-60"
+                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white shadow-soft transition hover:bg-accent-strong disabled:opacity-60"
                       disabled={acknowledgingId === alert.id}
                       onClick={() => onAcknowledge(alert.id)}
                       type="button"

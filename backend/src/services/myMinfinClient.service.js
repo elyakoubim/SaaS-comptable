@@ -225,6 +225,10 @@ function mapDocument(raw) {
       ownerIdentifier: entity?.identifier ?? null
     })),
     documentType: pickLocalized(raw?.docType?.name),
+    // Le LocalizedString complet, conservé tel quel : le classificateur matche
+    // sur les trois langues à la fois, et l'interface a besoin du libellé dans
+    // la langue du comptable. `pickLocalized` en jette trois sur quatre.
+    documentTypeLabels: raw?.docType?.name ?? null,
     documentDate: raw?.modifiedOn ?? null,
     publishDate: raw?.modifiedOn ?? null,
     contentUri: raw?.content ?? null,

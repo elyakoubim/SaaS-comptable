@@ -8,7 +8,7 @@ import {
 } from "../services/fpsAuth.service.js";
 import { searchDocuments } from "../services/myMinfinClient.service.js";
 import { ApiError, AuthError, RateLimitError } from "../services/myMinfinErrors.js";
-import { classifyDocument } from "../services/documentClassifier.service.js";
+import { classifyDocument, buildAlertTitle } from "../services/documentClassifier.service.js";
 import {
   findMandantByEcb,
   listSyncCandidates,
@@ -129,12 +129,21 @@ async function processDocumentSyncJob(job) {
       });
 
       if (isNew) {
-        const { level, titleKey } = classifyDocument(doc.documentType);
+        // On passe le LocalizedString complet, pas la seule langue choisie :
+        // le classificateur matche sur FR, NL et DE simultanément.
+        const { level, titleKey, category } = classifyDocument(
+          doc.documentTypeLabels || doc.documentType
+        );
         await createAlert({
           mandantEcb: ecbNumber,
           niveau: level,
-          titre: `[${titleKey}] ${doc.documentType || "document"}`,
-          detail: doc.documentDate ? `Date: ${doc.documentDate}` : null,
+          titre: buildAlertTitle(titleKey, doc.documentType),
+          detail: [
+            `Catégorie : ${category}`,
+            doc.documentDate ? `Date : ${doc.documentDate}` : null
+          ]
+            .filter(Boolean)
+            .join(" · "),
           documentFpsId: doc.uuid,
           documentTypeFps: doc.documentType,
           documentDate: doc.documentDate

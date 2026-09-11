@@ -101,7 +101,7 @@ async function startFpsConnection(ecbNumber) {
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || "Impossible de démarrer la connexion FPS");
+    throw new Error(data.message || "Impossible de démarrer la connexion MyMinfin");
   }
 
   return response.json();
@@ -164,21 +164,26 @@ async function forceSync(cbe) {
   return response.json();
 }
 
-async function fetchSignals() {
-  const mandantsPayload = await fetchMandants().catch(() => ({ data: [] }));
-  const data = (mandantsPayload.data || []).map((item) => {
-    const seed = Number(String(item.ecbNumber || "0").slice(-4));
-    return {
-      mandantEcb: item.ecbNumber,
-      companyName: item.companyName || "Entreprise",
-      vatDelta: ((seed % 72) - 36).toFixed(1),
-      inconsistencyCount: (seed % 4) + 1,
-      lateHistoryCount: seed % 5,
-      riskScore: Math.min(95, Math.max(8, (seed % 100) + Number(item.activeAlertCount || 0) * 7))
-    };
+/**
+ * Signaux d'analyse — calculés côté serveur à partir des documents et des
+ * alertes réellement synchronisés.
+ *
+ * L'implémentation précédente ne faisait aucun appel réseau : elle prenait les
+ * quatre derniers chiffres du numéro BCE comme graine et en dérivait une
+ * « variation TVA vs N-1 », un nombre d'« incohérences détectées » et un
+ * « score de risque ». Rien de tout cela n'existait. Affiché à un comptable,
+ * c'était faux au sens propre.
+ */
+async function fetchSignals({ days } = {}) {
+  const path = days ? `/api/analysis/signals?days=${encodeURIComponent(days)}` : "/api/analysis/signals";
+  const response = await fetch(apiUrl(path), {
+    headers: withAuthHeaders()
   });
-
-  return { data };
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Impossible de charger l'analyse");
+  }
+  return response.json();
 }
 
 export { startFpsConnection, fetchMandants, fetchAlerts, acknowledgeAlert, forceSync, fetchSignals };

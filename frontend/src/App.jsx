@@ -9,64 +9,107 @@ import { AnalysisPage } from "./pages/AnalysisPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 
 const navItems = [
-  { to: "/", label: "Dashboard" },
+  { to: "/", label: "Dossiers" },
   { to: "/alerts", label: "Alertes" },
   { to: "/analysis", label: "Analyse" },
   { to: "/connect", label: "Connecter" }
 ];
 
+/**
+ * La marque Vatu : carré vert à coins arrondis, coche blanche, mot-symbole.
+ * Repris du site public plutôt que réinventé — c'est la même entreprise, et le
+ * comptable qui arrive du site doit reconnaître l'application.
+ */
+function VatuMark() {
+  return (
+    <span className="flex items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M6 12.5l4 4L18 8"
+            stroke="white"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+      <span className="font-display text-xl font-bold tracking-tight text-ink">Vatu</span>
+    </span>
+  );
+}
+
 function AppShell({ children, isAuthenticated, currentUser, onLogout }) {
   const location = useLocation();
+  const userLabel = currentUser?.fullName || currentUser?.email || "";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-canvas font-body text-ink">
-      <div className="pointer-events-none absolute -left-16 top-20 h-72 w-72 rounded-full bg-[#8fd4dd]/45 blur-3xl" />
-      <div className="pointer-events-none absolute right-[-5rem] top-[-2rem] h-80 w-80 rounded-full bg-[#f3c58a]/50 blur-3xl" />
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8">
-        <header className="mb-6 animate-rise rounded-3xl border border-white/70 bg-white/70 px-5 py-4 shadow-soft backdrop-blur sm:px-6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="font-display text-xs uppercase tracking-[0.26em] text-accent">NV SaaS Comptable</p>
-              <h1 className="font-display text-2xl font-semibold sm:text-3xl">Cabinet cockpit fiscal</h1>
-            </div>
-            <nav className="flex flex-wrap gap-2">
-              {isAuthenticated ? (
-                <>
-                  {navItems.map((item) => {
-                    const active = location.pathname === item.to;
-                    return (
-                      <Link
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                          active
-                            ? "bg-ink text-white shadow-soft"
-                            : "bg-white/80 text-ink hover:-translate-y-0.5 hover:bg-white"
-                        }`}
-                        key={item.to}
-                        to={item.to}
-                      >
-                        {item.label}
-                      </Link>
-                    );
-                  })}
+    <div className="min-h-screen bg-canvas font-body text-ink">
+      <header className="sticky top-0 z-20 border-b border-line bg-white/85 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <Link className="shrink-0" to={isAuthenticated ? "/" : "/login"}>
+            <VatuMark />
+          </Link>
+
+          {isAuthenticated && (
+            <nav className="order-3 flex w-full flex-wrap items-center gap-1 sm:order-none sm:w-auto sm:pl-6">
+              {navItems.map((item) => {
+                const active = location.pathname === item.to;
+                return (
+                  <Link
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      active
+                        ? "bg-accent-soft text-accent-strong"
+                        : "text-muted hover:bg-gray-50 hover:text-ink"
+                    }`}
+                    key={item.to}
+                    to={item.to}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+
+          <div className="ml-auto flex items-center gap-3">
+            {isAuthenticated ? (
+              <>
+                {userLabel && (
+                  <span className="hidden text-sm text-muted sm:inline" title={userLabel}>
+                    {userLabel}
+                  </span>
+                )}
                 <button
-                  className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100"
+                  className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-muted shadow-soft transition hover:bg-gray-50 hover:text-ink"
                   onClick={onLogout}
                   type="button"
                 >
-                    Se deconnecter
+                  Se déconnecter
                 </button>
-                </>
-              ) : (
-                <span className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">Authentification requise</span>
-              )}
-            </nav>
+              </>
+            ) : (
+              <span className="rounded-full border border-accent-line bg-accent-soft px-3 py-1 text-sm font-medium text-accent-strong">
+                Connexion requise
+              </span>
+            )}
           </div>
-          {isAuthenticated && (
-            <p className="mt-2 text-xs text-slate-600">Session: {currentUser?.fullName || currentUser?.email || "Utilisateur"}</p>
-          )}
-        </header>
-        <main className="animate-rise">{children}</main>
-      </div>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-7xl animate-rise px-4 pb-12 pt-6 sm:px-6 lg:px-8">
+        {children}
+      </main>
+
+      <footer className="border-t border-line">
+        <div className="mx-auto w-full max-w-7xl px-4 py-5 text-xs text-muted sm:px-6 lg:px-8">
+          Vatu passe par l'API officielle du SPF Finances, en lecture seule. La décision finale —
+          valider, encoder, payer — vous revient.
+        </div>
+      </footer>
     </div>
   );
 }
@@ -137,8 +180,8 @@ export default function App() {
   if (isCheckingSession) {
     return (
       <AppShell currentUser={null} isAuthenticated={false} onLogout={handleLogout}>
-        <section className="rounded-2xl border border-white/85 bg-white/85 p-5 text-sm text-slate-600 shadow-soft">
-          Verification de la session en cours...
+        <section className="rounded-2xl border border-line bg-white p-5 text-sm text-gray-600 shadow-soft">
+          Vérification de la session…
         </section>
       </AppShell>
     );
@@ -156,7 +199,7 @@ export default function App() {
                 <Navigate replace to="/" />
               ) : (
                 <LoginPage
-                  defaultEmail="demo-accountant@nv-saas.local"
+                  defaultEmail=""
                   isLoggingIn={isLoggingIn}
                   isRegistering={isRegistering}
                   loginError={loginError}
