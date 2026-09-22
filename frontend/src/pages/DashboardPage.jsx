@@ -20,6 +20,16 @@ const PORTFOLIO_CATEGORIES = [
   { value: "autre", label: "Autre" }
 ];
 
+// Filtre par niveau : conserve un dossier si au moins une alerte du niveau
+// choisi y est active. "" = pas de filtre (tous les dossiers, y compris ceux
+// sans aucune alerte).
+const PORTFOLIO_LEVELS = [
+  { value: "", label: "Tous niveaux" },
+  { value: "critical", label: "Critique" },
+  { value: "warning", label: "A traiter" },
+  { value: "info", label: "Info" }
+];
+
 function countBadgeClass(level, count) {
   if (!count) {
     return "bg-gray-50 text-gray-400";
@@ -76,6 +86,16 @@ function formatCooldown(ms) {
   return `${minutes} min`;
 }
 
+// Comparaison insensible aux accents/casse : "Meunier" doit trouver "Meunier"
+// même tapé "meunier" ou "münier".
+function normalizeForSearch(value) {
+  return (value || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 function DashboardPage() {
   const [mandants, setMandants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +109,8 @@ function DashboardPage() {
   const [portfolioLoading, setPortfolioLoading] = useState(true);
   const [portfolioError, setPortfolioError] = useState("");
   const [portfolioCategory, setPortfolioCategory] = useState("");
+  const [portfolioLevel, setPortfolioLevel] = useState("");
+  const [portfolioSearch, setPortfolioSearch] = useState("");
 
   async function load() {
     try {
@@ -143,6 +165,25 @@ function DashboardPage() {
       cancelled = true;
     };
   }, [portfolioCategory]);
+
+  // Niveau et recherche filtrent la liste déjà récupérée (la catégorie, elle,
+  // change le résultat côté serveur car elle change aussi les compteurs).
+  const filteredPortfolio = useMemo(() => {
+    const needle = normalizeForSearch(portfolioSearch);
+
+    return portfolio.filter((item) => {
+      if (portfolioLevel && Number(item.counts?.[portfolioLevel] || 0) === 0) {
+        return false;
+      }
+      if (needle) {
+        const haystack = normalizeForSearch(`${item.companyName || ""} ${item.mandantEcb || ""}`);
+        if (!haystack.includes(needle)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [portfolio, portfolioLevel, portfolioSearch]);
 
   const portfolioSummary = useMemo(() => {
     let totalCritical = 0;
@@ -232,17 +273,37 @@ function DashboardPage() {
             <h2 className="font-display text-xl font-semibold">Portefeuille</h2>
             <p className="text-sm text-gray-600">Tous vos dossiers, triés par urgence.</p>
           </div>
-          <select
-            className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted"
-            onChange={(event) => setPortfolioCategory(event.target.value)}
-            value={portfolioCategory}
-          >
-            {PORTFOLIO_CATEGORIES.map((entry) => (
-              <option key={entry.value || "all"} value={entry.value}>
-                {entry.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="w-44 rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink placeholder:text-gray-400"
+              onChange={(event) => setPortfolioSearch(event.target.value)}
+              placeholder="Nom ou n° BCE"
+              type="search"
+              value={portfolioSearch}
+            />
+            <select
+              className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted"
+              onChange={(event) => setPortfolioLevel(event.target.value)}
+              value={portfolioLevel}
+            >
+              {PORTFOLIO_LEVELS.map((entry) => (
+                <option key={entry.value || "all-levels"} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted"
+              onChange={(event) => setPortfolioCategory(event.target.value)}
+              value={portfolioCategory}
+            >
+              {PORTFOLIO_CATEGORIES.map((entry) => (
+                <option key={entry.value || "all"} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {!portfolioLoading && !portfolioError && portfolio.length > 0 && (
@@ -277,15 +338,21 @@ function DashboardPage() {
           </p>
         )}
 
+        {!portfolioLoading && !portfolioError && portfolio.length > 0 && filteredPortfolio.length === 0 && (
+          <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+            Aucun dossier ne correspond à ces filtres.
+          </p>
+        )}
+
         {!portfolioLoading && !portfolioError && portfolio.length === 0 && (
           <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
             Aucun dossier ne correspond à ce filtre.
           </p>
         )}
 
-        {!portfolioLoading && !portfolioError && portfolio.length > 0 && (
+        {!portfolioLoading && !portfolioError && filteredPortfolio.length > 0 && (
           <div className="mb-2 grid gap-2">
-            {portfolio.map((item) => {
+            {filteredPortfolio.map((item) => {
               const isDormant =
                 !item.counts?.critical && !item.counts?.warning && !item.counts?.info;
 

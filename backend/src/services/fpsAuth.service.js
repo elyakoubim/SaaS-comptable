@@ -231,6 +231,24 @@ async function exchangeAuthorizationCode({ code, state }) {
     tokenSet = await callTokenEndpoint(body);
     const idTokenPayload = await verifyIdToken(tokenSet.id_token, flow.nonce);
 
+    // TEMPORAIRE — a retirer une fois la question tranchee (23/09/2026) :
+    // on ne sait pas si le SPF fournit un nom d'entreprise quelque part dans
+    // tokenSet ou dans les claims de l'id_token (company_name est NULL en base
+    // pour les 3 mandats de test — persistTokenSet() lit tokenSet.customerName,
+    // qui n'a jamais existe : tokenSet est juste la reponse JSON brute du token
+    // endpoint : access_token/refresh_token/expires_in/scope/id_token).
+    // On logue une fois les cles disponibles pour trancher avant de coder quoi
+    // que ce soit. Rien de secret ici : uniquement les noms de champs et les
+    // claims non sensibles de l'id_token (pas les tokens eux-memes).
+    console.log(
+      "[fps-connect][diagnostic-nom-entreprise] cles tokenSet:",
+      Object.keys(tokenSet)
+    );
+    console.log(
+      "[fps-connect][diagnostic-nom-entreprise] claims id_token:",
+      JSON.stringify(idTokenPayload)
+    );
+
     await persistTokenSet({
       ecbNumber: flow.ecbNumber,
       accountantId: flow.accountantId,
