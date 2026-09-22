@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { acknowledgeAlert, fetchAlerts } from "../api";
 
 function levelTone(level) {
@@ -23,6 +24,9 @@ function formatDate(value) {
 }
 
 function AlertsPage() {
+  const [searchParams] = useSearchParams();
+  const mandantFilter = searchParams.get("mandant") || "";
+
   const [alerts, setAlerts] = useState([]);
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState("all");
@@ -35,6 +39,9 @@ function AlertsPage() {
       setLoading(true);
       setError("");
       const filters = filter === "all" ? {} : { level: filter };
+      if (mandantFilter) {
+        filters.mandant = mandantFilter;
+      }
       const payload = await fetchAlerts(filters);
       setAlerts(payload.items || []);
       setTotal(payload.total || 0);
@@ -45,7 +52,7 @@ function AlertsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, mandantFilter]);
 
   useEffect(() => {
     loadAlerts();
@@ -76,6 +83,14 @@ function AlertsPage() {
             <p className="text-sm text-gray-600">
               Ce qui demande une décision, remonté depuis MyMinfin. Alertes actives : {total}
             </p>
+            {mandantFilter && (
+              <p className="mt-1 text-xs text-gray-500">
+                Filtré sur le dossier BCE {mandantFilter} —{" "}
+                <Link className="font-semibold text-accent hover:text-accent-strong" to="/alerts">
+                  voir tous les dossiers
+                </Link>
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {[

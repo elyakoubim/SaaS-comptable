@@ -140,6 +140,29 @@ async function fetchAlerts(filters = {}) {
   return response.json();
 }
 
+/**
+ * Vue portefeuille : une ligne par dossier du cabinet, deja triee par
+ * urgence cote serveur (critique > warning > info), avec l'alerte la plus
+ * urgente de chaque dossier. `category` restreint aux alertes d'une des
+ * onze categories du classificateur (voir CATEGORIES).
+ */
+async function fetchPortfolio(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.category) params.set("category", String(filters.category));
+
+  const query = params.toString();
+  const path = query ? `/api/alerts/portfolio?${query}` : "/api/alerts/portfolio";
+
+  const response = await fetch(apiUrl(path), {
+    headers: withAuthHeaders()
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Impossible de charger le portefeuille");
+  }
+  return response.json();
+}
+
 async function acknowledgeAlert(alertId) {
   const response = await fetch(apiUrl(`/api/alerts/${alertId}/acknowledge`), {
     method: "POST",
@@ -186,5 +209,5 @@ async function fetchSignals({ days } = {}) {
   return response.json();
 }
 
-export { startFpsConnection, fetchMandants, fetchAlerts, acknowledgeAlert, forceSync, fetchSignals };
+export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };

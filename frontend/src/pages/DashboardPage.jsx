@@ -1,5 +1,47 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchMandants, forceSync } from "../api";
+import { Link } from "react-router-dom";
+import { fetchMandants, fetchPortfolio, forceSync } from "../api";
+
+// Les onze categories metier du classificateur (documentClassifier.service.js,
+// cote backend). Duplique ici en toute connaissance de cause : le front n'a
+// pas de dependance vers le code backend, et cette liste ne change pas souvent.
+const PORTFOLIO_CATEGORIES = [
+  { value: "", label: "Toutes categories" },
+  { value: "recouvrement", label: "Recouvrement" },
+  { value: "sanction", label: "Sanction" },
+  { value: "paiement", label: "Paiement" },
+  { value: "controle", label: "Controle" },
+  { value: "declaration", label: "Declaration" },
+  { value: "attestation", label: "Attestation" },
+  { value: "accuse", label: "Accuse de reception" },
+  { value: "douane_accises", label: "Douane et accises" },
+  { value: "ubo", label: "UBO" },
+  { value: "enregistrement", label: "Enregistrement" },
+  { value: "autre", label: "Autre" }
+];
+
+function countBadgeClass(level, count) {
+  if (!count) {
+    return "bg-gray-50 text-gray-400";
+  }
+  if (level === "critical") {
+    return "bg-red-50 text-danger";
+  }
+  if (level === "warning") {
+    return "bg-amber-50 text-warning";
+  }
+  return "bg-gray-100 text-gray-500";
+}
+
+function topAlertToneClass(level) {
+  if (level === "critical") {
+    return "text-danger";
+  }
+  if (level === "warning") {
+    return "text-warning";
+  }
+  return "text-gray-500";
+}
 
 // Quota SPF : une recherche par dossier et par tranche de 10 minutes. Le bouton
 // se désarme tout seul pendant ce délai — mieux vaut un bouton grisé qu'un 429
@@ -43,6 +85,11 @@ function DashboardPage() {
   // Force un recalcul du compte à rebours sans refaire d'appel réseau.
   const [, setTick] = useState(0);
 
+  const [portfolio, setPortfolio] = useState([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
+  const [portfolioError, setPortfolioError] = useState("");
+  const [portfolioCategory, setPortfolioCategory] = useState("");
+
   async function load() {
     try {
       setLoading(true);
@@ -65,6 +112,55 @@ function DashboardPage() {
     const timer = setInterval(() => setTick((value) => value + 1), 30_000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPortfolio() {
+      try {
+        setPortfolioLoading(true);
+        setPortfolioError("");
+        const payload = await fetchPortfolio(
+          portfolioCategory ? { category: portfolioCategory } : {}
+        );
+        if (!cancelled) {
+          setPortfolio(payload.items || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPortfolioError(err.message || "Chargement du portefeuille impossible");
+          setPortfolio([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setPortfolioLoading(false);
+        }
+      }
+    }
+
+    loadPortfolio();
+    return () => {
+      cancelled = true;
+    };
+  }, [portfolioCategory]);
+
+  const portfolioSummary = useMemo(() => {
+    let totalCritical = 0;
+    let dossiersWithCritical = 0;
+    let totalWarning = 0;
+
+    for (const item of portfolio) {
+      const critical = Number(item.counts?.critical || 0);
+      const warning = Number(item.counts?.warning || 0);
+      totalCritical += critical;
+      totalWarning += warning;
+      if (critical > 0) {
+        dossiersWithCritical += 1;
+      }
+    }
+
+    return { totalCritical, dossiersWithCritical, totalWarning };
+  }, [portfolio]);
 
   async function handleSync(ecbNumber) {
     try {
@@ -129,6 +225,131 @@ function DashboardPage() {
           <p className="mt-2 font-display text-3xl font-semibold text-orange-900">{metrics.activeAlerts}</p>
         </article>
       </div>
+
+      <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-semibold">Portefeuille</h2>
+            <p className="text-sm text-gray-600">Tous vos dossiers, triés par urgence.</p>
+          </div>
+          <select
+            className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted"
+            onChange={(event) => setPortfolioCategory(event.target.value)}
+            value={portfolioCategory}
+          >
+            {PORTFOLIO_CATEGORIES.map((entry) => (
+              <option key={entry.value || "all"} value={entry.value}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {!portfolioLoading && !portfolioError && portfolio.length > 0 && (
+          <p className="mb-4 rounded-xl border border-red-100 bg-red-50/60 px-3 py-2 text-sm text-ink">
+            {portfolioSummary.totalCritical > 0 ? (
+              <>
+                <span className="font-semibold text-danger">
+                  {portfolioSummary.totalCritical} alerte{portfolioSummary.totalCritical > 1 ? "s" : ""} critique
+                  {portfolioSummary.totalCritical > 1 ? "s" : ""}
+                </span>{" "}
+                chez {portfolioSummary.dossiersWithCritical} dossier{portfolioSummary.dossiersWithCritical > 1 ? "s" : ""}
+                {portfolioSummary.totalWarning > 0 && (
+                  <>, et {portfolioSummary.totalWarning} à traiter avant échéance</>
+                )}
+                .
+              </>
+            ) : (
+              "Rien de critique en attente sur le portefeuille."
+            )}
+          </p>
+        )}
+
+        {portfolioLoading && (
+          <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+            Chargement du portefeuille…
+          </p>
+        )}
+
+        {portfolioError && !portfolioLoading && (
+          <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">
+            {portfolioError}
+          </p>
+        )}
+
+        {!portfolioLoading && !portfolioError && portfolio.length === 0 && (
+          <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+            Aucun dossier ne correspond à ce filtre.
+          </p>
+        )}
+
+        {!portfolioLoading && !portfolioError && portfolio.length > 0 && (
+          <div className="mb-2 grid gap-2">
+            {portfolio.map((item) => {
+              const isDormant =
+                !item.counts?.critical && !item.counts?.warning && !item.counts?.info;
+
+              return (
+                <Link
+                  className={`grid grid-cols-1 gap-2 rounded-xl border border-gray-200/70 bg-white px-4 py-3 transition hover:border-gray-300 hover:bg-gray-50 sm:grid-cols-[1.8fr_1fr_2fr_0.9fr] sm:items-center sm:gap-4 ${
+                    isDormant ? "opacity-50" : ""
+                  }`}
+                  key={item.mandantEcb}
+                  to={`/alerts?mandant=${item.mandantEcb}`}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-ink">{item.companyName || "Entreprise"}</p>
+                    <p className="text-xs text-gray-500">BCE {item.mandantEcb}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-2 text-xs font-bold ${countBadgeClass("critical", item.counts?.critical)}`}>
+                      {item.counts?.critical || 0}
+                    </span>
+                    <span className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-2 text-xs font-bold ${countBadgeClass("warning", item.counts?.warning)}`}>
+                      {item.counts?.warning || 0}
+                    </span>
+                    <span className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-2 text-xs font-bold ${countBadgeClass("info", item.counts?.info)}`}>
+                      {item.counts?.info || 0}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0">
+                    {item.topAlert ? (
+                      <>
+                        <p className={`truncate text-sm font-medium ${topAlertToneClass(item.topAlert.level)}`}>
+                          {item.topAlert.title}
+                        </p>
+                        {item.topAlert.documentDate && (
+                          <p className="text-xs text-gray-500">Document du {formatDate(item.topAlert.documentDate)}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-400">Rien à traiter</p>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-gray-500 sm:text-right">
+                    Sync {formatDate(item.lastSyncAt)}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        <p className="mb-6 mt-1 flex flex-wrap gap-4 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-danger" /> Critique — conséquence immédiate
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-warning" /> À traiter — délai en cours
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-gray-300" /> Info — à archiver
+          </span>
+        </p>
+      </article>
 
       <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
