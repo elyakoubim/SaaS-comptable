@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS alerts (
   niveau TEXT NOT NULL CHECK (niveau IN ('info', 'warning', 'critical')),
   titre TEXT NOT NULL,
   detail TEXT,
+  category TEXT,
+  actionable BOOLEAN NOT NULL DEFAULT FALSE,
   document_fps_id TEXT NOT NULL UNIQUE,
   document_type_fps TEXT,
   document_date DATE,
@@ -41,8 +43,17 @@ CREATE TABLE IF NOT EXISTS alerts (
   acknowledged_by UUID REFERENCES accountants(id)
 );
 
+-- 23/09/2026 : category et actionable ajoutés pour la vue portefeuille.
+-- documentClassifier.service.js les calcule depuis longtemps (11/09) mais ils
+-- n'etaient jamais persistes. ADD COLUMN IF NOT EXISTS pour les bases deja
+-- creees avant ce changement (ensureDatabaseSchema rejoue ce fichier a chaque
+-- demarrage, cf. src/config/db.js).
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS actionable BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE INDEX IF NOT EXISTS idx_alerts_mandant_ecb ON alerts(mandant_ecb);
 CREATE INDEX IF NOT EXISTS idx_alerts_status_level ON alerts(statut, niveau);
+CREATE INDEX IF NOT EXISTS idx_alerts_category ON alerts(category);
 
 CREATE TABLE IF NOT EXISTS sync_runs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

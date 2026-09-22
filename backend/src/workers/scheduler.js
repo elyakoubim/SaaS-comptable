@@ -131,7 +131,7 @@ async function processDocumentSyncJob(job) {
       if (isNew) {
         // On passe le LocalizedString complet, pas la seule langue choisie :
         // le classificateur matche sur FR, NL et DE simultanément.
-        const { level, titleKey, category } = classifyDocument(
+        const { level, titleKey, category, actionable } = classifyDocument(
           doc.documentTypeLabels || doc.documentType
         );
         await createAlert({
@@ -144,6 +144,8 @@ async function processDocumentSyncJob(job) {
           ]
             .filter(Boolean)
             .join(" · "),
+          category,
+          actionable,
           documentFpsId: doc.uuid,
           documentTypeFps: doc.documentType,
           documentDate: doc.documentDate

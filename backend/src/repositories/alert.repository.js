@@ -5,6 +5,8 @@ async function createAlert({
   niveau,
   titre,
   detail,
+  category,
+  actionable,
   documentFpsId,
   documentTypeFps,
   documentDate
@@ -15,6 +17,8 @@ async function createAlert({
       niveau,
       titre,
       detail,
+      category,
+      actionable,
       document_fps_id,
       document_type_fps,
       document_date,
@@ -27,11 +31,13 @@ async function createAlert({
       $4,
       $5,
       $6,
-      $7::date,
+      $7,
+      $8,
+      $9::date,
       'active',
       NOW()
     )
-    RETURNING id, mandant_ecb, niveau, titre, statut, triggered_at
+    RETURNING id, mandant_ecb, niveau, titre, category, actionable, statut, triggered_at
   `;
 
   const result = await db.query(query, [
@@ -39,6 +45,8 @@ async function createAlert({
     niveau,
     titre,
     detail || null,
+    category || null,
+    actionable === true,
     documentFpsId,
     documentTypeFps || null,
     documentDate || null
@@ -64,13 +72,18 @@ async function listByAccountant(accountantId, filters = {}) {
     throw new Error("accountantId is required");
   }
 
-  const { level, mandantEcb, acknowledged, limit = 50, offset = 0 } = filters;
+  const { level, category, mandantEcb, acknowledged, limit = 50, offset = 0 } = filters;
   const params = [accountantId];
   const conditions = ["m.accountant_id = $1::uuid"];
 
   if (level) {
     params.push(level);
     conditions.push(`a.niveau = $${params.length}`);
+  }
+
+  if (category) {
+    params.push(category);
+    conditions.push(`a.category = $${params.length}`);
   }
 
   if (mandantEcb) {
@@ -93,6 +106,8 @@ async function listByAccountant(accountantId, filters = {}) {
       a.niveau,
       a.titre,
       a.detail,
+      a.category,
+      a.actionable,
       a.document_fps_id,
       a.document_type_fps,
       a.document_date,
@@ -152,10 +167,80 @@ async function countActiveByAccountant(accountantId) {
   return result.rows[0]?.total || 0;
 }
 
+/**
+ * Vue portefeuille : une ligne par dossier (mandant) du cabinet, avec les
+ * compteurs d'alertes actives par niveau et l'alerte la plus urgente.
+ *
+ * "La plus urgente" = la plus sévère (critical > warning > info), puis la
+ * plus récente à niveau égal. Un `category` optionnel restreint le calcul
+ * (compteurs et alerte la plus urgente) aux alertes de cette catégorie
+ * seulement — les onze valeurs de `CATEGORIES` dans documentClassifier.service.js.
+ */
+async function getPortfolioSummary(accountantId, filters = {}) {
+  if (!accountantId) {
+    throw new Error("accountantId is required");
+  }
+
+  const { category = null } = filters;
+
+  const query = `
+    WITH counts AS (
+      SELECT
+        m.ecb_number,
+        m.company_name,
+        m.last_sync_at,
+        COUNT(*) FILTER (WHERE a.niveau = 'critical' AND a.statut = 'active') AS critical_count,
+        COUNT(*) FILTER (WHERE a.niveau = 'warning' AND a.statut = 'active') AS warning_count,
+        COUNT(*) FILTER (WHERE a.niveau = 'info' AND a.statut = 'active') AS info_count
+      FROM mandants m
+      LEFT JOIN alerts a
+        ON a.mandant_ecb = m.ecb_number
+        AND ($2::text IS NULL OR a.category = $2::text)
+      WHERE m.accountant_id = $1::uuid
+      GROUP BY m.ecb_number, m.company_name, m.last_sync_at
+    ),
+    ranked AS (
+      SELECT
+        a.mandant_ecb,
+        a.titre,
+        a.niveau,
+        a.category,
+        a.document_date,
+        ROW_NUMBER() OVER (
+          PARTITION BY a.mandant_ecb
+          ORDER BY
+            CASE a.niveau WHEN 'critical' THEN 3 WHEN 'warning' THEN 2 ELSE 1 END DESC,
+            a.triggered_at DESC
+        ) AS rn
+      FROM alerts a
+      WHERE a.statut = 'active'
+        AND ($2::text IS NULL OR a.category = $2::text)
+    )
+    SELECT
+      c.ecb_number,
+      c.company_name,
+      c.last_sync_at,
+      c.critical_count,
+      c.warning_count,
+      c.info_count,
+      r.titre AS top_title,
+      r.niveau AS top_level,
+      r.category AS top_category,
+      r.document_date AS top_document_date
+    FROM counts c
+    LEFT JOIN ranked r ON r.mandant_ecb = c.ecb_number AND r.rn = 1
+    ORDER BY c.critical_count DESC, c.warning_count DESC, c.info_count DESC, c.company_name ASC
+  `;
+
+  const result = await db.query(query, [accountantId, category]);
+  return result.rows;
+}
+
 export {
   createAlert,
   existsForDocument,
   listByAccountant,
   acknowledgeAlert,
-  countActiveByAccountant
+  countActiveByAccountant,
+  getPortfolioSummary
 };

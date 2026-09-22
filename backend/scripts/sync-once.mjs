@@ -83,7 +83,7 @@ async function syncOne(ECB) {
     });
 
     if (isNew) {
-      const { level, titleKey, category } = classifyDocument(
+      const { level, titleKey, category, actionable } = classifyDocument(
         doc.documentTypeLabels || doc.documentType
       );
       await createAlert({
@@ -93,6 +93,8 @@ async function syncOne(ECB) {
         detail: [`Catégorie : ${category}`, doc.documentDate ? `Date : ${doc.documentDate}` : null]
           .filter(Boolean)
           .join(" · "),
+        category,
+        actionable,
         documentFpsId: doc.uuid,
         documentTypeFps: doc.documentType,
         documentDate: doc.documentDate

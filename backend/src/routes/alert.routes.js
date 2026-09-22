@@ -3,10 +3,13 @@ import { requireAuth } from "../middleware/auth.middleware.js";
 import {
   acknowledgeAlert,
   listByAccountant,
-  countActiveByAccountant
+  countActiveByAccountant,
+  getPortfolioSummary
 } from "../repositories/alert.repository.js";
+import { CATEGORIES } from "../services/documentClassifier.service.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const VALID_CATEGORIES = new Set(Object.values(CATEGORIES));
 
 const alertRouter = Router();
 
@@ -35,12 +38,18 @@ function parsePositiveInteger(value, fallback, max) {
   return parsed;
 }
 
+function parseCategory(raw) {
+  const value = String(raw || "");
+  return VALID_CATEGORIES.has(value) ? value : undefined;
+}
+
 alertRouter.get("/", requireAuth, async (req, res) => {
   try {
     const filters = {
       level: ["info", "warning", "critical"].includes(String(req.query.level || ""))
         ? String(req.query.level)
         : undefined,
+      category: parseCategory(req.query.category),
       mandantEcb: /^\d{10}$/.test(String(req.query.mandant || ""))
         ? String(req.query.mandant)
         : undefined,
@@ -59,6 +68,8 @@ alertRouter.get("/", requireAuth, async (req, res) => {
       level: row.niveau,
       title: row.titre,
       detail: row.detail,
+      category: row.category,
+      actionable: row.actionable,
       documentFpsId: row.document_fps_id,
       documentTypeFps: row.document_type_fps,
       documentDate: row.document_date,
@@ -69,6 +80,43 @@ alertRouter.get("/", requireAuth, async (req, res) => {
     }));
 
     return res.json({ items, total });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * Vue portefeuille : une ligne par dossier du cabinet, triée par urgence
+ * (compteurs critical > warning > info), avec l'alerte la plus urgente de
+ * chaque dossier. Support de `?category=` pour restreindre à une des onze
+ * catégories métier du classificateur.
+ */
+alertRouter.get("/portfolio", requireAuth, async (req, res) => {
+  try {
+    const category = parseCategory(req.query.category);
+
+    const rows = await getPortfolioSummary(req.auth.accountantId, { category });
+
+    const items = rows.map((row) => ({
+      mandantEcb: row.ecb_number,
+      companyName: row.company_name,
+      lastSyncAt: row.last_sync_at,
+      counts: {
+        critical: row.critical_count,
+        warning: row.warning_count,
+        info: row.info_count
+      },
+      topAlert: row.top_title
+        ? {
+            title: row.top_title,
+            level: row.top_level,
+            category: row.top_category,
+            documentDate: row.top_document_date
+          }
+        : null
+    }));
+
+    return res.json({ items });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
