@@ -53,11 +53,6 @@ function topAlertToneClass(level) {
   return "text-gray-500";
 }
 
-// Quota SPF : une recherche par dossier et par tranche de 10 minutes. Le bouton
-// se désarme tout seul pendant ce délai — mieux vaut un bouton grisé qu'un 429
-// renvoyé par l'administration.
-const SYNC_COOLDOWN_MS = 10 * 60 * 1000;
-
 function statusTone(status) {
   if (status === "alert") {
     return "text-danger bg-red-50 border-red-200";
@@ -73,17 +68,6 @@ function formatDate(value) {
     return "-";
   }
   return new Date(value).toLocaleString("fr-BE");
-}
-
-function cooldownRemainingMs(lastSyncAt) {
-  if (!lastSyncAt) return 0;
-  const elapsed = Date.now() - new Date(lastSyncAt).getTime();
-  return Math.max(0, SYNC_COOLDOWN_MS - elapsed);
-}
-
-function formatCooldown(ms) {
-  const minutes = Math.ceil(ms / 60_000);
-  return `${minutes} min`;
 }
 
 // Comparaison insensible aux accents/casse : "Meunier" doit trouver "Meunier"
@@ -444,9 +428,8 @@ function DashboardPage() {
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {mandants.map((mandant) => {
-            const remaining = cooldownRemainingMs(mandant.lastSyncAt);
             const isSyncing = syncingEcb === mandant.ecbNumber;
-            const disabled = isSyncing || remaining > 0;
+            const disabled = isSyncing;
             const feedback = syncFeedback[mandant.ecbNumber];
 
             return (
@@ -477,11 +460,7 @@ function DashboardPage() {
                       onClick={() => handleSync(mandant.ecbNumber)}
                       type="button"
                     >
-                      {isSyncing
-                        ? "Synchronisation…"
-                        : remaining > 0
-                          ? `Disponible dans ${formatCooldown(remaining)}`
-                          : "Premiere synchronisation"}
+                      {isSyncing ? "Synchronisation…" : "Premiere synchronisation"}
                     </button>
 
                     {feedback && (
