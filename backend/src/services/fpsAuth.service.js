@@ -309,6 +309,35 @@ async function refreshMandantByEcb(ecbNumber) {
 
   try {
     const tokenSet = await callTokenEndpoint(body);
+
+    // TEMPORAIRE — meme diagnostic que exchangeAuthorizationCode (23/09/2026),
+    // colle ici sur le chemin refresh qui est bien plus fiable a declencher (un
+    // simple clic Synchroniser suffit, pas besoin de rejouer tout le consentement
+    // FAS/CSAM). Le refresh_token grant peut renvoyer un nouvel id_token si le
+    // scope openid a ete demande au depart — on regarde s'il y a quelque chose
+    // d'exploitable pour le nom d'entreprise. Rien de secret loggue.
+    console.log(
+      "[fps-refresh][diagnostic-nom-entreprise] cles tokenSet:",
+      Object.keys(tokenSet)
+    );
+    if (tokenSet.id_token) {
+      try {
+        const parts = String(tokenSet.id_token).split(".");
+        const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+        console.log(
+          "[fps-refresh][diagnostic-nom-entreprise] claims id_token (refresh):",
+          JSON.stringify(payload)
+        );
+      } catch (decodeError) {
+        console.log(
+          "[fps-refresh][diagnostic-nom-entreprise] id_token present mais non decodable:",
+          decodeError.message
+        );
+      }
+    } else {
+      console.log("[fps-refresh][diagnostic-nom-entreprise] pas d'id_token sur le refresh");
+    }
+
     await persistTokenSet({
       ecbNumber,
       accountantId: mandant.accountant_id,
