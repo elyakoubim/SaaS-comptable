@@ -119,7 +119,14 @@ async function listByAccountant(accountantId, filters = {}) {
     FROM alerts a
     INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
     WHERE ${conditions.join(" AND ")}
-    ORDER BY a.triggered_at DESC
+    ORDER BY
+      CASE a.niveau
+        WHEN 'critical' THEN 0
+        WHEN 'warning' THEN 1
+        WHEN 'info' THEN 2
+        ELSE 3
+      END,
+      a.triggered_at DESC
     LIMIT $${params.length - 1}
     OFFSET $${params.length}
   `;

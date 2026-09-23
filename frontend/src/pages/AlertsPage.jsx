@@ -30,6 +30,7 @@ function AlertsPage() {
   const [alerts, setAlerts] = useState([]);
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [acknowledgingId, setAcknowledgingId] = useState("");
@@ -43,6 +44,13 @@ function AlertsPage() {
       if (mandantFilter) {
         filters.mandant = mandantFilter;
       }
+      // "Traitees" = acquittees (statut acknowledged), "Actives" = pas encore
+      // traitees. "Toutes" ne filtre pas sur le statut.
+      if (statusFilter === "active") {
+        filters.acknowledged = false;
+      } else if (statusFilter === "acknowledged") {
+        filters.acknowledged = true;
+      }
       const payload = await fetchAlerts(filters);
       setAlerts(payload.items || []);
       setTotal(payload.total || 0);
@@ -53,7 +61,7 @@ function AlertsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, mandantFilter]);
+  }, [filter, mandantFilter, statusFilter]);
 
   useEffect(() => {
     loadAlerts();
@@ -120,26 +128,48 @@ function AlertsPage() {
               </p>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "all", label: "Toutes" },
-              { key: "critical", label: "Critiques" },
-              { key: "warning", label: "À traiter" },
-              { key: "info", label: "Information" }
-            ].map((entry) => (
-              <button
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                  filter === entry.key
-                    ? "border border-accent-line bg-accent-soft text-accent-strong"
-                    : "border border-line bg-white text-muted hover:bg-gray-50 hover:text-ink"
-                }`}
-                key={entry.key}
-                onClick={() => setFilter(entry.key)}
-                type="button"
-              >
-                {entry.label}
-              </button>
-            ))}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: "all", label: "Toutes" },
+                { key: "critical", label: "Critiques" },
+                { key: "warning", label: "À traiter" },
+                { key: "info", label: "Information" }
+              ].map((entry) => (
+                <button
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    filter === entry.key
+                      ? "border border-accent-line bg-accent-soft text-accent-strong"
+                      : "border border-line bg-white text-muted hover:bg-gray-50 hover:text-ink"
+                  }`}
+                  key={entry.key}
+                  onClick={() => setFilter(entry.key)}
+                  type="button"
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: "active", label: "Actives" },
+                { key: "acknowledged", label: "Traitées" },
+                { key: "all", label: "Toutes (statut)" }
+              ].map((entry) => (
+                <button
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    statusFilter === entry.key
+                      ? "border border-line bg-gray-100 text-ink"
+                      : "border border-line bg-white text-muted hover:bg-gray-50 hover:text-ink"
+                  }`}
+                  key={entry.key}
+                  onClick={() => setStatusFilter(entry.key)}
+                  type="button"
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -163,45 +193,65 @@ function AlertsPage() {
 
         {!loading && alerts.length > 0 && (
           <div className="grid gap-3">
-            {alerts.map((alert) => (
-              <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-soft" key={alert.id}>
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-display text-lg font-semibold">{alert.title}</h3>
-                  <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${levelTone(alert.level)}`}>
-                    {alert.level}
-                  </span>
-                </div>
-                {alert.detail && <p className="text-sm text-gray-700">{alert.detail}</p>}
-                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
-                  <span>Mandant: {alert.companyName || alert.mandantEcb}</span>
-                  <span>BCE: {alert.mandantEcb}</span>
-                  <span>Date document: {formatDate(alert.documentDate)}</span>
-                  <span>Statut: {alert.status}</span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {alert.documentFpsId && (
-                    <button
-                      className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-soft transition hover:bg-gray-50 disabled:opacity-60"
-                      disabled={viewingId === alert.documentFpsId}
-                      onClick={() => onViewDocument(alert.documentFpsId)}
-                      type="button"
+            {alerts.map((alert) => {
+              const isAcknowledged = alert.status === "acknowledged";
+              return (
+                <article
+                  className={`rounded-2xl border p-4 shadow-soft ${
+                    isAcknowledged ? "border-gray-100 bg-gray-50" : "border-gray-200 bg-white"
+                  }`}
+                  key={alert.id}
+                >
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className={`font-display text-lg font-semibold ${isAcknowledged ? "text-gray-500" : ""}`}>
+                      {alert.title}
+                    </h3>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${
+                        isAcknowledged ? "border-gray-200 bg-gray-100 text-gray-500" : levelTone(alert.level)
+                      }`}
                     >
-                      {viewingId === alert.documentFpsId ? "Ouverture..." : "Voir le document"}
-                    </button>
+                      {alert.level}
+                    </span>
+                  </div>
+                  {alert.detail && (
+                    <p className={`text-sm ${isAcknowledged ? "text-gray-500" : "text-gray-700"}`}>{alert.detail}</p>
                   )}
-                  {alert.status === "active" && (
-                    <button
-                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white shadow-soft transition hover:bg-accent-strong disabled:opacity-60"
-                      disabled={acknowledgingId === alert.id}
-                      onClick={() => onAcknowledge(alert.id)}
-                      type="button"
-                    >
-                      {acknowledgingId === alert.id ? "Acquittement..." : "Acquitter"}
-                    </button>
-                  )}
-                </div>
-              </article>
-            ))}
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+                    <span>Mandant: {alert.companyName || alert.mandantEcb}</span>
+                    <span>BCE: {alert.mandantEcb}</span>
+                    <span>Date document: {formatDate(alert.documentDate)}</span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {alert.documentFpsId && (
+                      <button
+                        className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-soft transition hover:bg-gray-50 disabled:opacity-60"
+                        disabled={viewingId === alert.documentFpsId}
+                        onClick={() => onViewDocument(alert.documentFpsId)}
+                        type="button"
+                      >
+                        {viewingId === alert.documentFpsId ? "Ouverture..." : "Voir le document"}
+                      </button>
+                    )}
+                    {alert.status === "active" && (
+                      <button
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white shadow-soft transition hover:bg-accent-strong disabled:opacity-60"
+                        disabled={acknowledgingId === alert.id}
+                        onClick={() => onAcknowledge(alert.id)}
+                        type="button"
+                      >
+                        {acknowledgingId === alert.id ? "Acquittement..." : "Acquitter"}
+                      </button>
+                    )}
+                    {isAcknowledged && (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                        Traité le {formatDate(alert.acknowledgedAt)}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </article>
