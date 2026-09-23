@@ -11,6 +11,7 @@ import {
 import { insertTokenEvent } from "../repositories/tokenEvent.repository.js";
 import { verifyIdToken } from "./fpsOidcValidation.service.js";
 import { saveLoginFlow, takeLoginFlow } from "./connectFlowStore.service.js";
+import { lookupCompanyNameByEcb } from "./bceClient.service.js";
 
 function makeClientAssertion() {
   return buildClientAssertion({
@@ -133,9 +134,20 @@ async function persistTokenSet({
     throw new Error("accountantId is required to persist FPS tokens");
   }
 
+  // Le SPF ne fournit jamais de nom d'entreprise (ni customerName sur le
+  // tokenSet, ni claim id_token, ni champ MyMinfin - cf. vatu/decisions.md,
+  // 23/09/2026). On le résout via la BCE (Public Search), une seule fois :
+  // si on a déjà un nom connu (fallbackCompanyName), pas besoin de rappeler
+  // le webservice à chaque connexion/refresh.
+  const companyName =
+    tokenSet.customerName ||
+    fallbackCompanyName ||
+    (await lookupCompanyNameByEcb(ecbNumber)) ||
+    null;
+
   await upsertMandantTokens({
     ecbNumber,
-    companyName: tokenSet.customerName || fallbackCompanyName || null,
+    companyName,
     accountantId,
     accessTokenEncrypted: encryptText(tokenSet.access_token),
     refreshTokenEncrypted: encryptText(tokenSet.refresh_token),
@@ -231,24 +243,6 @@ async function exchangeAuthorizationCode({ code, state }) {
     tokenSet = await callTokenEndpoint(body);
     const idTokenPayload = await verifyIdToken(tokenSet.id_token, flow.nonce);
 
-    // TEMPORAIRE — a retirer une fois la question tranchee (23/09/2026) :
-    // on ne sait pas si le SPF fournit un nom d'entreprise quelque part dans
-    // tokenSet ou dans les claims de l'id_token (company_name est NULL en base
-    // pour les 3 mandats de test — persistTokenSet() lit tokenSet.customerName,
-    // qui n'a jamais existe : tokenSet est juste la reponse JSON brute du token
-    // endpoint : access_token/refresh_token/expires_in/scope/id_token).
-    // On logue une fois les cles disponibles pour trancher avant de coder quoi
-    // que ce soit. Rien de secret ici : uniquement les noms de champs et les
-    // claims non sensibles de l'id_token (pas les tokens eux-memes).
-    console.log(
-      "[fps-connect][diagnostic-nom-entreprise] cles tokenSet:",
-      Object.keys(tokenSet)
-    );
-    console.log(
-      "[fps-connect][diagnostic-nom-entreprise] claims id_token:",
-      JSON.stringify(idTokenPayload)
-    );
-
     await persistTokenSet({
       ecbNumber: flow.ecbNumber,
       accountantId: flow.accountantId,
@@ -309,34 +303,6 @@ async function refreshMandantByEcb(ecbNumber) {
 
   try {
     const tokenSet = await callTokenEndpoint(body);
-
-    // TEMPORAIRE — meme diagnostic que exchangeAuthorizationCode (23/09/2026),
-    // colle ici sur le chemin refresh qui est bien plus fiable a declencher (un
-    // simple clic Synchroniser suffit, pas besoin de rejouer tout le consentement
-    // FAS/CSAM). Le refresh_token grant peut renvoyer un nouvel id_token si le
-    // scope openid a ete demande au depart — on regarde s'il y a quelque chose
-    // d'exploitable pour le nom d'entreprise. Rien de secret loggue.
-    console.log(
-      "[fps-refresh][diagnostic-nom-entreprise] cles tokenSet:",
-      Object.keys(tokenSet)
-    );
-    if (tokenSet.id_token) {
-      try {
-        const parts = String(tokenSet.id_token).split(".");
-        const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-        console.log(
-          "[fps-refresh][diagnostic-nom-entreprise] claims id_token (refresh):",
-          JSON.stringify(payload)
-        );
-      } catch (decodeError) {
-        console.log(
-          "[fps-refresh][diagnostic-nom-entreprise] id_token present mais non decodable:",
-          decodeError.message
-        );
-      }
-    } else {
-      console.log("[fps-refresh][diagnostic-nom-entreprise] pas d'id_token sur le refresh");
-    }
 
     await persistTokenSet({
       ecbNumber,
