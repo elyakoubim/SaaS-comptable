@@ -465,44 +465,47 @@ function DashboardPage() {
                 <p className="mt-1 text-sm text-gray-600">Consentement: {formatDate(mandant.consentGivenAt)}</p>
                 <p className="mt-1 text-sm text-gray-600">Derniere sync: {formatDate(mandant.lastSyncAt)}</p>
 
-                <div className="mt-3 border-t border-gray-100 pt-3">
-                  <button
-                    className={`w-full rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                      disabled
-                        ? "cursor-not-allowed border border-line bg-gray-50 text-gray-400"
-                        : "bg-accent text-white shadow-soft hover:bg-accent-strong"
-                    }`}
-                    disabled={disabled}
-                    onClick={() => handleSync(mandant.ecbNumber)}
-                    type="button"
-                  >
-                    {isSyncing
-                      ? "Synchronisation…"
-                      : remaining > 0
-                        ? `Disponible dans ${formatCooldown(remaining)}`
-                        : "Synchroniser"}
-                  </button>
-
-                  {feedback && (
-                    <p
-                      className={`mt-2 rounded-xl px-3 py-2 text-xs ${
-                        feedback.tone === "ok"
-                          ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-                          : "border border-red-200 bg-red-50 text-red-700"
+                {!mandant.lastSyncAt && (
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    <button
+                      className={`w-full rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                        disabled
+                          ? "cursor-not-allowed border border-line bg-gray-50 text-gray-400"
+                          : "bg-accent text-white shadow-soft hover:bg-accent-strong"
                       }`}
+                      disabled={disabled}
+                      onClick={() => handleSync(mandant.ecbNumber)}
+                      type="button"
                     >
-                      {feedback.text}
-                    </p>
-                  )}
-                </div>
+                      {isSyncing
+                        ? "Synchronisation…"
+                        : remaining > 0
+                          ? `Disponible dans ${formatCooldown(remaining)}`
+                          : "Premiere synchronisation"}
+                    </button>
+
+                    {feedback && (
+                      <p
+                        className={`mt-2 rounded-xl px-3 py-2 text-xs ${
+                          feedback.tone === "ok"
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : "border border-red-200 bg-red-50 text-red-700"
+                        }`}
+                      >
+                        {feedback.text}
+                      </p>
+                    )}
+                  </div>
+                )}
               </article>
             );
           })}
         </div>
 
         <p className="mt-4 text-xs text-gray-500">
-          Le SPF n'autorise qu'une recherche par dossier toutes les 10 minutes. Une synchronisation
-          automatique tourne de toute façon chaque heure.
+          Une synchronisation automatique tourne chaque heure pour tous vos dossiers connectés —
+          pas besoin de resynchroniser à la main. Le bouton n'apparaît que pour un dossier qui
+          n'a encore jamais été synchronisé.
         </p>
       </article>
     </section>
