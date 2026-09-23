@@ -209,5 +209,23 @@ async function fetchSignals({ days } = {}) {
   return response.json();
 }
 
-export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals };
+/**
+ * Recupere le contenu binaire d'un document (PDF le plus souvent) depuis
+ * MyMinfin via le backend, pour l'ouvrir dans un nouvel onglet. Le endpoint
+ * exige un Bearer token (pas de cookie de session) donc un simple <a href>
+ * ne s'authentifierait pas : on fait le fetch nous-memes et on construit un
+ * blob URL.
+ */
+async function fetchDocumentBlob(documentId) {
+  const response = await fetch(apiUrl(`/api/documents/${documentId}/content`), {
+    headers: withAuthHeaders()
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Document introuvable");
+  }
+  return response.blob();
+}
+
+export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };

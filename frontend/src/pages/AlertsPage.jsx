@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { acknowledgeAlert, fetchAlerts } from "../api";
+import { acknowledgeAlert, fetchAlerts, fetchDocumentBlob } from "../api";
 
 function levelTone(level) {
   if (level === "critical") {
@@ -33,6 +33,7 @@ function AlertsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [acknowledgingId, setAcknowledgingId] = useState("");
+  const [viewingId, setViewingId] = useState("");
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -71,6 +72,33 @@ function AlertsPage() {
       setError(err.message || "Acquittement impossible");
     } finally {
       setAcknowledgingId("");
+    }
+  }
+
+  async function onViewDocument(documentFpsId) {
+    if (!documentFpsId || viewingId) {
+      return;
+    }
+    // On ouvre l'onglet tout de suite (synchrone) pour eviter que le
+    // navigateur bloque le popup une fois le fetch termine.
+    const tab = window.open("", "_blank");
+    try {
+      setViewingId(documentFpsId);
+      setError("");
+      const blob = await fetchDocumentBlob(documentFpsId);
+      const blobUrl = URL.createObjectURL(blob);
+      if (tab) {
+        tab.location.href = blobUrl;
+      } else {
+        window.open(blobUrl, "_blank");
+      }
+    } catch (err) {
+      if (tab) {
+        tab.close();
+      }
+      setError(err.message || "Impossible d'ouvrir le document");
+    } finally {
+      setViewingId("");
     }
   }
 
@@ -150,8 +178,18 @@ function AlertsPage() {
                   <span>Date document: {formatDate(alert.documentDate)}</span>
                   <span>Statut: {alert.status}</span>
                 </div>
-                {alert.status === "active" && (
-                  <div className="mt-3">
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {alert.documentFpsId && (
+                    <button
+                      className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-soft transition hover:bg-gray-50 disabled:opacity-60"
+                      disabled={viewingId === alert.documentFpsId}
+                      onClick={() => onViewDocument(alert.documentFpsId)}
+                      type="button"
+                    >
+                      {viewingId === alert.documentFpsId ? "Ouverture..." : "Voir le document"}
+                    </button>
+                  )}
+                  {alert.status === "active" && (
                     <button
                       className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white shadow-soft transition hover:bg-accent-strong disabled:opacity-60"
                       disabled={acknowledgingId === alert.id}
@@ -160,8 +198,8 @@ function AlertsPage() {
                     >
                       {acknowledgingId === alert.id ? "Acquittement..." : "Acquitter"}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </article>
             ))}
           </div>
