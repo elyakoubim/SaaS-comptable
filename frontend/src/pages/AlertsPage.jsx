@@ -240,7 +240,7 @@ function AlertsPage() {
                         onClick={() => onAcknowledge(alert.id)}
                         type="button"
                       >
-                        {acknowledgingId === alert.id ? "Acquittement..." : "Acquitter"}
+                        {acknowledgingId === alert.id ? "Marquage en cours..." : "Marquer comme traité"}
                       </button>
                     )}
                     {isAcknowledged && (
