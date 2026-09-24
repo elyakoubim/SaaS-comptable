@@ -9,6 +9,7 @@ import { AnalysisPage } from "./pages/AnalysisPage.jsx";
 import { BillingPage } from "./pages/BillingPage.jsx";
 import { BillingResultPage } from "./pages/BillingResultPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
+import { DemoPage } from "./pages/DemoPage.jsx";
 
 const navItems = [
   { to: "/", label: "Dossiers" },
@@ -94,6 +95,13 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout }) {
                   Se déconnecter
                 </button>
               </>
+            ) : location.pathname === "/demo" ? (
+              <Link
+                className="rounded-full border border-accent-line bg-accent-soft px-3 py-1 text-sm font-medium text-accent-strong hover:bg-accent-line"
+                to="/login"
+              >
+                Creer mon compte
+              </Link>
             ) : (
               <span className="rounded-full border border-accent-line bg-accent-soft px-3 py-1 text-sm font-medium text-accent-strong">
                 Connexion requise
@@ -291,6 +299,7 @@ export default function App() {
             path="/connect/error"
             element={isAuthenticated ? <ConnectResultPage mode="error" /> : <Navigate replace to="/login" />}
           />
+          <Route path="/demo" element={<DemoPage />} />
           <Route path="*" element={<Navigate replace to={isAuthenticated ? "/" : "/login"} />} />
         </Routes>
     </AppShell>
