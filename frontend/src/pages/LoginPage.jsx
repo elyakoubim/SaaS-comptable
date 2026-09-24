@@ -5,6 +5,7 @@ function LoginPage({
   isLoggingIn = false,
   isRegistering = false,
   loginError = "",
+  planNotice = "",
   registerError = "",
   registerSuccess = "",
   onLogin,
@@ -31,7 +32,13 @@ function LoginPage({
   }
 
   return (
-    <section className="mx-auto mt-6 grid max-w-6xl gap-5 lg:grid-cols-2">
+    <section className="mx-auto mt-6 max-w-6xl">
+      {planNotice && (
+        <p className="mb-4 rounded-xl border border-accent-line bg-accent-soft px-4 py-2.5 text-sm text-accent-strong">
+          {planNotice}
+        </p>
+      )}
+      <div className="grid gap-5 lg:grid-cols-2">
       <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Espace cabinet</p>
@@ -143,6 +150,7 @@ function LoginPage({
           </button>
         </form>
       </article>
+      </div>
     </section>
   );
 }

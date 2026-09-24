@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { fetchCurrentUser, getAuthToken, loginWithPassword, logout, registerAccount } from "./api";
+import { createCheckoutSession, fetchCurrentUser, getAuthToken, loginWithPassword, logout, registerAccount } from "./api";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { ConnectMandantPage } from "./pages/ConnectMandantPage.jsx";
 import { ConnectResultPage } from "./pages/ConnectResultPage.jsx";
@@ -117,7 +117,11 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout }) {
   );
 }
 
+const VALID_PLANS = new Set(["connect", "pro"]);
+const VALID_INTERVALS = new Set(["monthly", "annual"]);
+
 export default function App() {
+  const location = useLocation();
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -146,6 +150,26 @@ export default function App() {
     initSession();
   }, []);
 
+  async function redirectToRequestedCheckout() {
+    const params = new URLSearchParams(location.search);
+    const plan = params.get("plan");
+    const interval = params.get("interval") || "annual";
+
+    if (!VALID_PLANS.has(plan) || !VALID_INTERVALS.has(interval)) {
+      return false;
+    }
+
+    try {
+      const { url } = await createCheckoutSession({ plan, interval });
+      window.location.href = url;
+      return true;
+    } catch (_error) {
+      // Si Stripe echoue pour une raison quelconque, l'utilisateur reste
+      // simplement sur le dashboard et peut relancer depuis l'onglet Abonnement.
+      return false;
+    }
+  }
+
   async function handleLogin({ email, password }) {
     try {
       setIsLoggingIn(true);
@@ -153,6 +177,7 @@ export default function App() {
       setRegisterSuccess("");
       const payload = await loginWithPassword({ email, password });
       setCurrentUser(payload.user || null);
+      await redirectToRequestedCheckout();
     } catch (error) {
       setLoginError(error.message || "Connexion impossible");
     } finally {
@@ -167,7 +192,10 @@ export default function App() {
       setRegisterSuccess("");
       const payload = await registerAccount({ fullName, email, password });
       setCurrentUser(payload.user || null);
-      setRegisterSuccess("Inscription reussie. Session ouverte.");
+      const redirected = await redirectToRequestedCheckout();
+      if (!redirected) {
+        setRegisterSuccess("Inscription reussie. Session ouverte.");
+      }
     } catch (error) {
       setRegisterError(error.message || "Inscription impossible");
     } finally {
@@ -192,6 +220,17 @@ export default function App() {
 
   const isAuthenticated = Boolean(currentUser?.id || currentUser?.accountantId);
 
+  const requestedParams = new URLSearchParams(location.search);
+  const requestedPlan = requestedParams.get("plan");
+  const planLabels = { connect: "Vatu Connect", pro: "Vatu Pro" };
+  const intervalLabels = { monthly: "mensuel", annual: "annuel" };
+  const planNotice =
+    VALID_PLANS.has(requestedPlan)
+      ? `Inscription pour ${planLabels[requestedPlan]} (${
+          intervalLabels[requestedParams.get("interval")] || "annuel"
+        }) - vous serez redirige vers le paiement juste apres.`
+      : "";
+
   return (
     <AppShell currentUser={currentUser} isAuthenticated={isAuthenticated} onLogout={handleLogout}>
         <Routes>
@@ -206,6 +245,7 @@ export default function App() {
                   isLoggingIn={isLoggingIn}
                   isRegistering={isRegistering}
                   loginError={loginError}
+                  planNotice={planNotice}
                   registerError={registerError}
                   registerSuccess={registerSuccess}
                   onLogin={handleLogin}
