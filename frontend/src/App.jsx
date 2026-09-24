@@ -150,12 +150,22 @@ export default function App() {
     initSession();
   }, []);
 
-  async function redirectToRequestedCheckout() {
+  async function redirectToRequestedCheckout(user) {
     const params = new URLSearchParams(location.search);
     const plan = params.get("plan");
     const interval = params.get("interval") || "annual";
 
     if (!VALID_PLANS.has(plan) || !VALID_INTERVALS.has(interval)) {
+      return false;
+    }
+
+    // Un compte deja abonne (essai ou paye) ne doit pas repartir sur Stripe
+    // juste parce qu'il arrive via un lien "plan=" du site vitrine (ex: ancien
+    // onglet, favori) - meme logique que hasActiveSubscription dans BillingPage.
+    const activePlan = user?.subscriptionPlan || null;
+    const activeStatus = user?.subscriptionStatus || null;
+    const hasActiveSubscription = Boolean(activePlan) && activeStatus !== "canceled";
+    if (hasActiveSubscription) {
       return false;
     }
 
@@ -177,7 +187,7 @@ export default function App() {
       setRegisterSuccess("");
       const payload = await loginWithPassword({ email, password });
       setCurrentUser(payload.user || null);
-      await redirectToRequestedCheckout();
+      await redirectToRequestedCheckout(payload.user);
     } catch (error) {
       setLoginError(error.message || "Connexion impossible");
     } finally {
@@ -192,7 +202,7 @@ export default function App() {
       setRegisterSuccess("");
       const payload = await registerAccount({ fullName, email, password });
       setCurrentUser(payload.user || null);
-      const redirected = await redirectToRequestedCheckout();
+      const redirected = await redirectToRequestedCheckout(payload.user);
       if (!redirected) {
         setRegisterSuccess("Inscription reussie. Session ouverte.");
       }
