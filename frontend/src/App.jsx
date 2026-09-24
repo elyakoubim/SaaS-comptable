@@ -266,7 +266,10 @@ export default function App() {
           />
           <Route path="/" element={isAuthenticated ? <DashboardPage /> : <Navigate replace to="/login" />} />
           <Route path="/connect" element={isAuthenticated ? <ConnectMandantPage /> : <Navigate replace to="/login" />} />
-          <Route path="/alerts" element={isAuthenticated ? <AlertsPage /> : <Navigate replace to="/login" />} />
+          <Route
+            path="/alerts"
+            element={isAuthenticated ? <AlertsPage currentUser={currentUser} /> : <Navigate replace to="/login" />}
+          />
           <Route path="/analysis" element={isAuthenticated ? <AnalysisPage /> : <Navigate replace to="/login" />} />
           <Route
             path="/billing"

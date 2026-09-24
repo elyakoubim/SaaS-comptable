@@ -115,6 +115,11 @@ async function listByAccountant(accountantId, filters = {}) {
       a.statut,
       a.acknowledged_at,
       a.acknowledged_by,
+      a.extracted_montant,
+      a.extracted_date_echeance,
+      a.extracted_reference,
+      a.extracted_accroche,
+      a.extracted_at,
       m.company_name
     FROM alerts a
     INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
@@ -133,6 +138,67 @@ async function listByAccountant(accountantId, filters = {}) {
 
   const result = await db.query(query, params);
   return result.rows;
+}
+
+/**
+ * Charge une alerte avec verification d'appartenance au cabinet comptable
+ * (via le mandant), pour la route d'extraction IA - on ne veut jamais
+ * declencher une lecture de document pour un cabinet qui n'y a pas droit.
+ */
+async function getAlertForAccountant(alertId, accountantId) {
+  if (!alertId || !accountantId) {
+    throw new Error("alertId and accountantId are required");
+  }
+
+  const query = `
+    SELECT
+      a.id,
+      a.mandant_ecb,
+      a.category,
+      a.document_fps_id,
+      a.extracted_montant,
+      a.extracted_date_echeance,
+      a.extracted_reference,
+      a.extracted_accroche,
+      a.extracted_at
+    FROM alerts a
+    INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
+    WHERE a.id = $1::uuid
+      AND m.accountant_id = $2::uuid
+    LIMIT 1
+  `;
+
+  const result = await db.query(query, [alertId, accountantId]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Enregistre le resultat de "Lire avec l'IA" - fait une seule fois par
+ * document, `extracted_at` sert ensuite de cache (cf. extraction.service.js
+ * et la route POST /alerts/:id/extract).
+ */
+async function saveExtraction(alertId, { montant, dateEcheance, reference, accroche }) {
+  const query = `
+    UPDATE alerts
+    SET
+      extracted_montant = $2,
+      extracted_date_echeance = $3::date,
+      extracted_reference = $4,
+      extracted_accroche = $5,
+      extracted_at = NOW()
+    WHERE id = $1::uuid
+    RETURNING id, extracted_montant, extracted_date_echeance, extracted_reference, extracted_accroche, extracted_at
+  `;
+
+  const result = await db.query(query, [
+    alertId,
+    montant || null,
+    dateEcheance || null,
+    reference || null,
+    accroche || null
+  ]);
+
+  return result.rows[0] || null;
 }
 
 async function acknowledgeAlert(alertId, accountantId) {
@@ -247,6 +313,8 @@ export {
   createAlert,
   existsForDocument,
   listByAccountant,
+  getAlertForAccountant,
+  saveExtraction,
   acknowledgeAlert,
   countActiveByAccountant,
   getPortfolioSummary

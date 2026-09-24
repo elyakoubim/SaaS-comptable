@@ -1,6 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { acknowledgeAlert, fetchAlerts, fetchDocumentBlob } from "../api";
+import { acknowledgeAlert, fetchAlerts, fetchDocumentBlob, requestAlertExtraction } from "../api";
+
+// Miroir de ALLOWED_EXTRACTION_CATEGORIES cote backend
+// (extraction.service.js) : categories ou un montant/echeance a du sens.
+const EXTRACTABLE_CATEGORIES = new Set(["paiement", "recouvrement", "sanction", "declaration", "controle"]);
+
+function formatMontant(value) {
+  return value || null;
+}
+
+function formatEcheance(value) {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new Date(value).toLocaleDateString("fr-BE");
+  } catch (_error) {
+    return String(value);
+  }
+}
 
 function levelTone(level) {
   if (level === "critical") {
@@ -23,8 +42,11 @@ function formatDate(value) {
   }
 }
 
-function AlertsPage() {
+function AlertsPage({ currentUser }) {
   const [searchParams] = useSearchParams();
+  const hasProAccess =
+    currentUser?.subscriptionPlan === "pro" &&
+    ["trialing", "active"].includes(currentUser?.subscriptionStatus);
   const mandantFilter = searchParams.get("mandant") || "";
 
   const [alerts, setAlerts] = useState([]);
@@ -35,6 +57,7 @@ function AlertsPage() {
   const [error, setError] = useState("");
   const [acknowledgingId, setAcknowledgingId] = useState("");
   const [viewingId, setViewingId] = useState("");
+  const [extractingId, setExtractingId] = useState("");
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -107,6 +130,28 @@ function AlertsPage() {
       setError(err.message || "Impossible d'ouvrir le document");
     } finally {
       setViewingId("");
+    }
+  }
+
+  async function onExtract(alert) {
+    if (!alert?.id || extractingId) {
+      return;
+    }
+    try {
+      setExtractingId(alert.id);
+      setError("");
+      const extraction = await requestAlertExtraction(alert.id, { titre: alert.title });
+      setAlerts((current) =>
+        current.map((item) => (item.id === alert.id ? { ...item, extraction } : item))
+      );
+    } catch (err) {
+      if (err.status === 402) {
+        setError("La lecture IA necessite l'offre Vatu Pro.");
+      } else {
+        setError(err.message || "Lecture IA impossible");
+      }
+    } finally {
+      setExtractingId("");
     }
   }
 
@@ -222,6 +267,22 @@ function AlertsPage() {
                     <span>BCE: {alert.mandantEcb}</span>
                     <span>Date document: {formatDate(alert.documentDate)}</span>
                   </div>
+
+                  {alert.extraction && (
+                    <div className="mt-3 rounded-xl border border-accent-line bg-accent-soft p-3 text-sm text-accent-strong">
+                      <p className="font-semibold">{alert.extraction.accroche}</p>
+                      <div className="mt-1 flex flex-wrap gap-3 text-xs">
+                        {formatMontant(alert.extraction.montant) && (
+                          <span>Montant : {formatMontant(alert.extraction.montant)}</span>
+                        )}
+                        {formatEcheance(alert.extraction.dateEcheance) && (
+                          <span>Echeance : {formatEcheance(alert.extraction.dateEcheance)}</span>
+                        )}
+                        {alert.extraction.reference && <span>Reference : {alert.extraction.reference}</span>}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {alert.documentFpsId && (
                       <button
@@ -232,6 +293,24 @@ function AlertsPage() {
                       >
                         {viewingId === alert.documentFpsId ? "Ouverture..." : "Voir le document"}
                       </button>
+                    )}
+                    {!alert.extraction && EXTRACTABLE_CATEGORIES.has(alert.category) && hasProAccess && (
+                      <button
+                        className="rounded-lg border border-accent-line bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent-strong shadow-soft transition hover:bg-accent disabled:opacity-60"
+                        disabled={extractingId === alert.id}
+                        onClick={() => onExtract(alert)}
+                        type="button"
+                      >
+                        {extractingId === alert.id ? "Lecture en cours..." : "Lire avec l'IA ✨"}
+                      </button>
+                    )}
+                    {!alert.extraction && EXTRACTABLE_CATEGORIES.has(alert.category) && !hasProAccess && (
+                      <Link
+                        className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted shadow-soft transition hover:bg-gray-50"
+                        to="/billing"
+                      >
+                        Lire avec l'IA (Vatu Pro)
+                      </Link>
                     )}
                     {alert.status === "active" && (
                       <button

@@ -126,3 +126,13 @@ ALTER TABLE accountants ADD COLUMN IF NOT EXISTS trial_end TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_accountants_stripe_customer ON accountants (stripe_customer_id);
 
+-- Lire avec l'IA (Vatu Pro, phase 3) : extraction ciblee montant/echeance/
+-- reference sur une alerte, faite une fois par document puis mise en cache.
+-- ADD COLUMN IF NOT EXISTS pour les bases deja creees avant ce changement
+-- (ensureDatabaseSchema rejoue ce fichier a chaque demarrage, cf. src/config/db.js).
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_montant TEXT;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_date_echeance DATE;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_reference TEXT;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_accroche TEXT;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_at TIMESTAMPTZ;
+

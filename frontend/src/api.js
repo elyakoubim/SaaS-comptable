@@ -243,6 +243,22 @@ async function fetchSignals({ days } = {}) {
  * ne s'authentifierait pas : on fait le fetch nous-memes et on construit un
  * blob URL.
  */
+async function requestAlertExtraction(alertId, { titre } = {}) {
+  const response = await fetch(apiUrl(`/api/alerts/${alertId}/extract`), {
+    method: "POST",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ titre: titre || "" })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.message || "Lecture IA impossible");
+    error.status = response.status;
+    error.code = data.code;
+    throw error;
+  }
+  return data;
+}
+
 async function fetchDocumentBlob(documentId) {
   const response = await fetch(apiUrl(`/api/documents/${documentId}/content`), {
     headers: withAuthHeaders()
@@ -254,5 +270,5 @@ async function fetchDocumentBlob(documentId) {
   return response.blob();
 }
 
-export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, createCheckoutSession, createPortalSession };
+export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, createPortalSession };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
