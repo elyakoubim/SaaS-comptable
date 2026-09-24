@@ -113,3 +113,16 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE INDEX IF NOT EXISTS idx_documents_mandant_publish ON documents (mandant_ecb, publish_date DESC);
 CREATE INDEX IF NOT EXISTS idx_documents_type ON documents (document_type_fps);
+
+-- Abonnement Stripe (Vatu Connect / Vatu Pro). ADD COLUMN IF NOT EXISTS pour
+-- les bases deja creees avant ce changement (ensureDatabaseSchema rejoue ce
+-- fichier a chaque demarrage, cf. src/config/db.js).
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS subscription_plan TEXT CHECK (subscription_plan IN ('connect', 'pro'));
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS subscription_status TEXT;
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS subscription_current_period_end TIMESTAMPTZ;
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS trial_end TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_accountants_stripe_customer ON accountants (stripe_customer_id);
+

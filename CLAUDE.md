@@ -72,7 +72,9 @@ Backend `.env` (loaded from `backend/.env` by `config/env.js`):
 - `AUTH_JWT_SECRET` (preferred), `AUTH_TOKEN_TTL_SECONDS`, `AUTH_BCRYPT_ROUNDS`, `AUTH_TOKEN_ISSUER`
 - `ACCOUNTANT_DEMO_ID`, `AUTH_DEMO_EMAIL`, `AUTH_DEMO_PASSWORD`, `AUTH_DEMO_FULL_NAME` (demo seed)
 - `FPS_ENV` (`test`|`prod`), `FPS_CLIENT_ID`, `FPS_REDIRECT_URI`, `FPS_SCOPE`, `FPS_KEY_ID`, `FPS_PRIVATE_KEY_PEM` (escaped `\n` ok — normalized in config), `FPS_CLAIMS_ECB_FIELD`, `FPS_EXPECTED_ISSUER`
-- `FRONTEND_URL` (used to redirect after the FPS callback)
+- `FRONTEND_URL` (used to redirect after the FPS callback, and after Stripe Checkout/Portal)
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (from the Vatu Stripe account, test keys while `FPS_ENV=test`)
+- `STRIPE_PRICE_CONNECT_MONTHLY`, `STRIPE_PRICE_CONNECT_ANNUAL`, `STRIPE_PRICE_PRO_MONTHLY`, `STRIPE_PRICE_PRO_ANNUAL` (price IDs from the Stripe dashboard)
 
 Frontend `.env`: `VITE_API_BASE_URL` (omit/empty for same-origin).
 
