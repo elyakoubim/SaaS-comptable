@@ -6,13 +6,16 @@ import { ConnectMandantPage } from "./pages/ConnectMandantPage.jsx";
 import { ConnectResultPage } from "./pages/ConnectResultPage.jsx";
 import { AlertsPage } from "./pages/AlertsPage.jsx";
 import { AnalysisPage } from "./pages/AnalysisPage.jsx";
+import { BillingPage } from "./pages/BillingPage.jsx";
+import { BillingResultPage } from "./pages/BillingResultPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 
 const navItems = [
   { to: "/", label: "Dossiers" },
   { to: "/alerts", label: "Alertes" },
   { to: "/analysis", label: "Analyse" },
-  { to: "/connect", label: "Connecter" }
+  { to: "/connect", label: "Connecter" },
+  { to: "/billing", label: "Abonnement" }
 ];
 
 /**
@@ -215,6 +218,18 @@ export default function App() {
           <Route path="/connect" element={isAuthenticated ? <ConnectMandantPage /> : <Navigate replace to="/login" />} />
           <Route path="/alerts" element={isAuthenticated ? <AlertsPage /> : <Navigate replace to="/login" />} />
           <Route path="/analysis" element={isAuthenticated ? <AnalysisPage /> : <Navigate replace to="/login" />} />
+          <Route
+            path="/billing"
+            element={isAuthenticated ? <BillingPage currentUser={currentUser} /> : <Navigate replace to="/login" />}
+          />
+          <Route
+            path="/billing/success"
+            element={isAuthenticated ? <BillingResultPage mode="success" /> : <Navigate replace to="/login" />}
+          />
+          <Route
+            path="/billing/cancelled"
+            element={isAuthenticated ? <BillingResultPage mode="cancelled" /> : <Navigate replace to="/login" />}
+          />
           <Route
             path="/connect/success"
             element={isAuthenticated ? <ConnectResultPage mode="success" /> : <Navigate replace to="/login" />}

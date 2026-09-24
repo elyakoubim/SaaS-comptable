@@ -21,7 +21,10 @@ async function requireAuth(req, res, next) {
     req.auth = {
       accountantId: accountant.id,
       email: accountant.email,
-      fullName: accountant.full_name
+      fullName: accountant.full_name,
+      subscriptionPlan: accountant.subscription_plan,
+      subscriptionStatus: accountant.subscription_status,
+      trialEnd: accountant.trial_end
     };
 
     return next();

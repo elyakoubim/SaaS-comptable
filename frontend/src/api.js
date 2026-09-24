@@ -107,6 +107,33 @@ async function startFpsConnection(ecbNumber) {
   return response.json();
 }
 
+async function createCheckoutSession({ plan, interval }) {
+  const response = await fetch(apiUrl("/api/billing/checkout"), {
+    method: "POST",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ plan, interval })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Impossible de creer la session de paiement");
+  }
+  return data;
+}
+
+async function createPortalSession() {
+  const response = await fetch(apiUrl("/api/billing/portal"), {
+    method: "POST",
+    headers: withAuthHeaders()
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Impossible d'ouvrir le portail de facturation");
+  }
+  return data;
+}
+
 async function fetchMandants() {
   const response = await fetch(apiUrl("/api/fps/mandants"), {
     headers: withAuthHeaders()
@@ -227,5 +254,5 @@ async function fetchDocumentBlob(documentId) {
   return response.blob();
 }
 
-export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob };
+export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, createCheckoutSession, createPortalSession };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
