@@ -52,6 +52,37 @@ async function createCheckoutSession(accountant, { plan, interval }) {
   return session;
 }
 
+// Change le plan (connect <-> pro, ou l'intervalle) d'un abonnement Stripe deja
+// actif, sans repasser par Checkout - inutile de redemander une carte deja
+// enregistree. Contrairement a createCheckoutSession (nouvel abonnement), on
+// met a jour l'item existant en place : un seul abonnement Stripe par client,
+// jamais de doublon. Pas de proration en periode d'essai (rien n'a encore ete
+// facture), sinon Stripe calcule normalement le prorata.
+async function changeSubscriptionPlan(accountant, { plan, interval }) {
+  if (!accountant.stripe_subscription_id) {
+    throw new Error("Aucun abonnement actif a modifier - utilisez createCheckoutSession");
+  }
+
+  const newPriceId = resolvePriceId(plan, interval);
+  const subscription = await stripe.subscriptions.retrieve(accountant.stripe_subscription_id);
+  const currentItem = subscription.items?.data?.[0];
+  if (!currentItem) {
+    throw new Error("Abonnement Stripe sans ligne de facturation");
+  }
+
+  const updated = await stripe.subscriptions.update(accountant.stripe_subscription_id, {
+    items: [{ id: currentItem.id, price: newPriceId }],
+    proration_behavior: subscription.status === "trialing" ? "none" : "create_prorations",
+    metadata: { ...subscription.metadata, plan }
+  });
+
+  // Mise a jour immediate en base plutot que d'attendre le webhook
+  // customer.subscription.updated (qui arrivera aussi, de facon idempotente) -
+  // l'utilisateur doit voir son nouveau plan tout de suite dans l'app.
+  const state = extractSubscriptionState(updated);
+  return updateSubscriptionState(String(updated.customer), state);
+}
+
 // Cree une session du Customer Portal Stripe (gestion/annulation en self-service).
 async function createPortalSession(accountant) {
   const customerId = await ensureStripeCustomer(accountant);
@@ -155,6 +186,7 @@ function hasProAccess(accountant) {
 export {
   ensureStripeCustomer,
   createCheckoutSession,
+  changeSubscriptionPlan,
   createPortalSession,
   processWebhookEvent,
   hasProAccess

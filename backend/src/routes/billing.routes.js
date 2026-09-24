@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { findAccountantById } from "../repositories/accountant.repository.js";
-import { createCheckoutSession, createPortalSession } from "../services/billing.service.js";
+import { createCheckoutSession, changeSubscriptionPlan, createPortalSession } from "../services/billing.service.js";
 
 const billingRouter = Router();
 const VALID_PLANS = new Set(["connect", "pro"]);
@@ -26,6 +26,35 @@ billingRouter.post("/checkout", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Erreur creation checkout session:", error.message);
     return res.status(500).json({ message: "Impossible de creer la session de paiement" });
+  }
+});
+
+billingRouter.post("/change-plan", requireAuth, async (req, res) => {
+  try {
+    const plan = String(req.body?.plan || "");
+    const interval = String(req.body?.interval || "");
+
+    if (!VALID_PLANS.has(plan) || !VALID_INTERVALS.has(interval)) {
+      return res.status(400).json({ message: "plan doit etre 'connect'|'pro', interval 'monthly'|'annual'" });
+    }
+
+    const accountant = await findAccountantById(req.auth.accountantId);
+    if (!accountant) {
+      return res.status(404).json({ message: "Comptable introuvable" });
+    }
+
+    const updated = await changeSubscriptionPlan(accountant, { plan, interval });
+    if (!updated) {
+      return res.status(500).json({ message: "Changement de plan non reflete en base" });
+    }
+
+    return res.json({
+      plan: updated.subscription_plan,
+      status: updated.subscription_status
+    });
+  } catch (error) {
+    console.error("Erreur changement de plan:", error.message);
+    return res.status(500).json({ message: error.message || "Impossible de changer de plan" });
   }
 });
 

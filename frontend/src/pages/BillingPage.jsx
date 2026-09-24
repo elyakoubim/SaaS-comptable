@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { createCheckoutSession, createPortalSession } from "../api";
+import { useSearchParams } from "react-router-dom";
+import { createCheckoutSession, changeSubscriptionPlan, createPortalSession } from "../api";
 
 const PLANS = [
   {
@@ -31,6 +32,11 @@ const PLANS = [
 ];
 
 function BillingPage({ currentUser }) {
+  const [searchParams] = useSearchParams();
+  const recommendedPlan = ["connect", "pro"].includes(searchParams.get("plan"))
+    ? searchParams.get("plan")
+    : null;
+
   const [interval, setInterval_] = useState("annual");
   const [loadingPlan, setLoadingPlan] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
@@ -44,6 +50,14 @@ function BillingPage({ currentUser }) {
     try {
       setError("");
       setLoadingPlan(planKey);
+      // Deja abonne (a un autre plan ou au meme) : on change l'abonnement Stripe
+      // existant en place, jamais un second Checkout - ca creerait un
+      // abonnement en double au lieu de changer d'offre.
+      if (hasActiveSubscription) {
+        await changeSubscriptionPlan({ plan: planKey, interval });
+        window.location.reload();
+        return;
+      }
       const { url } = await createCheckoutSession({ plan: planKey, interval });
       window.location.href = url;
     } catch (err) {
@@ -118,8 +132,19 @@ function BillingPage({ currentUser }) {
         {PLANS.map((plan) => {
           const price = interval === "annual" ? plan.annual : plan.monthly;
           const isCurrent = activePlan === plan.key && hasActiveSubscription;
+          const isRecommended = recommendedPlan === plan.key && !isCurrent;
           return (
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-soft" key={plan.key}>
+            <div
+              className={`rounded-2xl border bg-white p-6 shadow-soft ${
+                isRecommended ? "border-accent ring-2 ring-accent-soft" : "border-line"
+              }`}
+              key={plan.key}
+            >
+              {isRecommended && (
+                <span className="mb-2 inline-block rounded-full bg-accent px-3 py-0.5 text-xs font-semibold text-white">
+                  Recommande pour "Lire avec l'IA"
+                </span>
+              )}
               <h3 className="font-display text-lg font-semibold text-ink">{plan.name}</h3>
               <p className="mt-1 text-sm text-muted">{plan.description}</p>
               <p className="mt-4">

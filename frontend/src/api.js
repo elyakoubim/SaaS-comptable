@@ -121,6 +121,20 @@ async function createCheckoutSession({ plan, interval }) {
   return data;
 }
 
+async function changeSubscriptionPlan({ plan, interval }) {
+  const response = await fetch(apiUrl("/api/billing/change-plan"), {
+    method: "POST",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ plan, interval })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Impossible de changer de plan");
+  }
+  return data;
+}
+
 async function createPortalSession() {
   const response = await fetch(apiUrl("/api/billing/portal"), {
     method: "POST",
@@ -270,5 +284,5 @@ async function fetchDocumentBlob(documentId) {
   return response.blob();
 }
 
-export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, createPortalSession };
+export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, changeSubscriptionPlan, createPortalSession };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };

@@ -307,7 +307,7 @@ function AlertsPage({ currentUser }) {
                     {!alert.extraction && EXTRACTABLE_CATEGORIES.has(alert.category) && !hasProAccess && (
                       <Link
                         className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted shadow-soft transition hover:bg-gray-50"
-                        to="/billing"
+                        to="/billing?plan=pro"
                       >
                         Lire avec l'IA (Vatu Pro)
                       </Link>
