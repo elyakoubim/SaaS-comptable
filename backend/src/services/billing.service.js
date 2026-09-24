@@ -1,36 +1,38 @@
 import { stripe, resolvePriceId, resolvePlanFromPriceId } from "../config/stripe.config.js";
 import {
   setStripeCustomerId,
-  findAccountantByStripeCustomerId,
   updateSubscriptionState
-} from "../repositories/accountant.repository.js";
+} from "../repositories/cabinet.repository.js";
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || "http://localhost:5173";
 }
 
-// Cree (ou reutilise) le Customer Stripe lie a ce comptable.
-async function ensureStripeCustomer(accountant) {
-  if (accountant.stripe_customer_id) {
-    return accountant.stripe_customer_id;
+// Cree (ou reutilise) le Customer Stripe lie a ce cabinet. Un cabinet n'a pas
+// d'email propre (seuls ses membres en ont un) : on utilise l'email/nom du
+// comptable qui initie l'action (necessairement le owner, cf. garde dans
+// billing.routes.js) pour la fiche client Stripe.
+async function ensureStripeCustomer(cabinet, ownerEmail, ownerFullName) {
+  if (cabinet.stripe_customer_id) {
+    return cabinet.stripe_customer_id;
   }
 
   const customer = await stripe.customers.create({
-    email: accountant.email,
-    name: accountant.full_name,
-    metadata: { accountantId: accountant.id }
+    email: ownerEmail,
+    name: ownerFullName || cabinet.name || undefined,
+    metadata: { cabinetId: cabinet.id }
   });
 
-  await setStripeCustomerId(accountant.id, customer.id);
+  await setStripeCustomerId(cabinet.id, customer.id);
   return customer.id;
 }
 
 // Cree une Checkout Session en mode abonnement avec essai de 14 jours et
 // collecte obligatoire de la carte (debit automatique a la fin de l'essai,
 // sauf annulation - cf. decision produit du 24/09/2026).
-async function createCheckoutSession(accountant, { plan, interval }) {
+async function createCheckoutSession(cabinet, { plan, interval, ownerEmail, ownerFullName }) {
   const priceId = resolvePriceId(plan, interval);
-  const customerId = await ensureStripeCustomer(accountant);
+  const customerId = await ensureStripeCustomer(cabinet, ownerEmail, ownerFullName);
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -42,7 +44,7 @@ async function createCheckoutSession(accountant, { plan, interval }) {
       trial_settings: {
         end_behavior: { missing_payment_method: "cancel" }
       },
-      metadata: { accountantId: accountant.id, plan }
+      metadata: { cabinetId: cabinet.id, plan }
     },
     allow_promotion_codes: true,
     success_url: `${frontendUrl()}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -55,22 +57,22 @@ async function createCheckoutSession(accountant, { plan, interval }) {
 // Change le plan (connect <-> pro, ou l'intervalle) d'un abonnement Stripe deja
 // actif, sans repasser par Checkout - inutile de redemander une carte deja
 // enregistree. Contrairement a createCheckoutSession (nouvel abonnement), on
-// met a jour l'item existant en place : un seul abonnement Stripe par client,
+// met a jour l'item existant en place : un seul abonnement Stripe par cabinet,
 // jamais de doublon. Pas de proration en periode d'essai (rien n'a encore ete
 // facture), sinon Stripe calcule normalement le prorata.
-async function changeSubscriptionPlan(accountant, { plan, interval }) {
-  if (!accountant.stripe_subscription_id) {
+async function changeSubscriptionPlan(cabinet, { plan, interval }) {
+  if (!cabinet.stripe_subscription_id) {
     throw new Error("Aucun abonnement actif a modifier - utilisez createCheckoutSession");
   }
 
   const newPriceId = resolvePriceId(plan, interval);
-  const subscription = await stripe.subscriptions.retrieve(accountant.stripe_subscription_id);
+  const subscription = await stripe.subscriptions.retrieve(cabinet.stripe_subscription_id);
   const currentItem = subscription.items?.data?.[0];
   if (!currentItem) {
     throw new Error("Abonnement Stripe sans ligne de facturation");
   }
 
-  const updated = await stripe.subscriptions.update(accountant.stripe_subscription_id, {
+  const updated = await stripe.subscriptions.update(cabinet.stripe_subscription_id, {
     items: [{ id: currentItem.id, price: newPriceId }],
     proration_behavior: subscription.status === "trialing" ? "none" : "create_prorations",
     metadata: { ...subscription.metadata, plan }
@@ -84,8 +86,8 @@ async function changeSubscriptionPlan(accountant, { plan, interval }) {
 }
 
 // Cree une session du Customer Portal Stripe (gestion/annulation en self-service).
-async function createPortalSession(accountant) {
-  const customerId = await ensureStripeCustomer(accountant);
+async function createPortalSession(cabinet, { ownerEmail, ownerFullName }) {
+  const customerId = await ensureStripeCustomer(cabinet, ownerEmail, ownerFullName);
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
@@ -123,7 +125,7 @@ async function handleSubscriptionEvent(subscription) {
   const updated = await updateSubscriptionState(stripeCustomerId, state);
   if (!updated) {
     console.warn(
-      `Webhook Stripe: aucun comptable trouve pour stripe_customer_id=${stripeCustomerId}`
+      `Webhook Stripe: aucun cabinet trouve pour stripe_customer_id=${stripeCustomerId}`
     );
   }
   return updated;
@@ -176,11 +178,13 @@ async function processWebhookEvent(event) {
   }
 }
 
-// Un comptable a acces a "Lire avec l'IA" seulement sur Vatu Pro, et seulement
-// si l'abonnement est en essai ou actif (pas expire/impaye/annule).
-function hasProAccess(accountant) {
+// Un cabinet a acces a "Lire avec l'IA" seulement sur Vatu Pro, et seulement
+// si l'abonnement est en essai ou actif (pas expire/impaye/annule). Tous les
+// membres du cabinet en beneficient (cf. decision multi-utilisateurs du
+// 24/09/2026) : l'acces ne depend plus du comptable individuel.
+function hasProAccess(cabinet) {
   const activeStatuses = new Set(["trialing", "active"]);
-  return accountant.subscription_plan === "pro" && activeStatuses.has(accountant.subscription_status);
+  return cabinet.subscription_plan === "pro" && activeStatuses.has(cabinet.subscription_status);
 }
 
 export {

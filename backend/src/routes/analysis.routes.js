@@ -30,8 +30,8 @@ analysisRouter.get("/signals", requireAuth, async (req, res) => {
       : DEFAULT_WINDOW_DAYS;
 
     const [typeRows, alertRows] = await Promise.all([
-      countDocumentsByType(req.auth.accountantId, days),
-      countActiveAlertsByLevel(req.auth.accountantId)
+      countDocumentsByType(req.auth.cabinetId, days),
+      countActiveAlertsByLevel(req.auth.cabinetId)
     ]);
 
     /** @type {Map<string, any>} */

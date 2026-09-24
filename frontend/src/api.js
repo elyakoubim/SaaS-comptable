@@ -45,11 +45,11 @@ async function loginWithPassword({ email, password }) {
   return data;
 }
 
-async function registerAccount({ email, password, fullName }) {
+async function registerAccount({ email, password, fullName, inviteToken }) {
   const response = await fetch(apiUrl("/api/auth/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, fullName })
+    body: JSON.stringify({ email, password, fullName, inviteToken: inviteToken || undefined })
   });
 
   const data = await response.json().catch(() => ({}));
@@ -284,5 +284,32 @@ async function fetchDocumentBlob(documentId) {
   return response.blob();
 }
 
+async function fetchCabinetMembers() {
+  const response = await fetch(apiUrl("/api/cabinet/members"), {
+    headers: withAuthHeaders()
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Impossible de charger l'equipe");
+  }
+  return data.items || [];
+}
+
+async function inviteCabinetMember(email) {
+  const response = await fetch(apiUrl("/api/cabinet/invite"), {
+    method: "POST",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ email })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Invitation impossible");
+  }
+  return data;
+}
+
 export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, changeSubscriptionPlan, createPortalSession };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
+export { fetchCabinetMembers, inviteCabinetMember };

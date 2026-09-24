@@ -3,6 +3,11 @@ import { authConfig } from "../config/auth.config.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { loginRateLimiter, registerRateLimiter } from "../middleware/rateLimit.middleware.js";
 import { createAccountant, findAccountantByEmail } from "../repositories/accountant.repository.js";
+import {
+  createCabinet,
+  findInvitationByToken,
+  markInvitationAccepted
+} from "../repositories/cabinet.repository.js";
 import { hashPassword, signSessionToken, verifyPassword } from "../utils/authCrypto.js";
 
 const authRouter = Router();
@@ -24,7 +29,7 @@ function toAuthErrorMessage(error, fallbackMessage) {
 
 authRouter.post("/register", registerRateLimiter, async (req, res) => {
   try {
-    const { email, password, fullName } = req.body || {};
+    const { email, password, fullName, inviteToken } = req.body || {};
 
     if (!email || !password || !fullName) {
       return res.status(400).json({ message: "email, password and fullName are required" });
@@ -36,12 +41,37 @@ authRouter.post("/register", registerRateLimiter, async (req, res) => {
       return res.status(409).json({ message: "An account already exists for this email" });
     }
 
+    // Deux chemins : rejoindre un cabinet existant via une invitation, ou en
+    // creer un nouveau (comportement historique d'une inscription "solo").
+    let cabinetId;
+    let role = "owner";
+    let invitation = null;
+
+    if (inviteToken) {
+      invitation = await findInvitationByToken(String(inviteToken));
+      if (!invitation || invitation.accepted_at) {
+        return res.status(400).json({ message: "Invitation invalide ou deja utilisee" });
+      }
+      cabinetId = invitation.cabinet_id;
+      role = "member";
+    } else {
+      const cabinet = await createCabinet({ name: String(fullName) });
+      cabinetId = cabinet.id;
+      role = "owner";
+    }
+
     const passwordHash = await hashPassword(String(password), authConfig.bcryptRounds);
     const created = await createAccountant({
       email: normalizedEmail,
       passwordHash,
-      fullName: String(fullName)
+      fullName: String(fullName),
+      cabinetId,
+      role
     });
+
+    if (invitation) {
+      await markInvitationAccepted(invitation.id);
+    }
 
     const token = signSessionToken({
       accountantId: created.id,
@@ -58,7 +88,8 @@ authRouter.post("/register", registerRateLimiter, async (req, res) => {
       user: {
         id: created.id,
         email: created.email,
-        fullName: created.full_name
+        fullName: created.full_name,
+        role: created.role
       }
     });
   } catch (error) {

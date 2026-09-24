@@ -136,3 +136,79 @@ ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_reference TEXT;
 ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_accroche TEXT;
 ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extracted_at TIMESTAMPTZ;
 
+-- Multi-utilisateurs par cabinet (decision du 24/09/2026) : un cabinet est
+-- l'unite de propriete (mandats, abonnement Stripe), pas le login individuel.
+-- V1 volontairement simple : pas de permissions par dossier, tout membre
+-- d'un cabinet voit tous ses mandats ; role 'owner' (gere facturation et
+-- invitations) ou 'member'.
+CREATE TABLE IF NOT EXISTS cabinets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  subscription_plan TEXT CHECK (subscription_plan IN ('connect', 'pro')),
+  subscription_status TEXT,
+  subscription_current_period_end TIMESTAMPTZ,
+  trial_end TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cabinets_stripe_customer ON cabinets (stripe_customer_id);
+
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id);
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'owner' CHECK (role IN ('owner', 'member'));
+
+-- Backfill idempotent : chaque comptable existant sans cabinet devient owner
+-- d'un cabinet cree pour lui, en reprenant son etat d'abonnement Stripe
+-- actuel (accountants.stripe_* reste en place, non utilise, pour ne rien
+-- perdre si ce script devait etre rejoue ou inspecte plus tard). Ne touche
+-- que les lignes encore sans cabinet_id : sans effet a partir du deuxieme
+-- redemarrage (ensureDatabaseSchema rejoue ce fichier a chaque boot).
+DO $$
+DECLARE
+  rec RECORD;
+  new_cabinet_id UUID;
+BEGIN
+  FOR rec IN SELECT * FROM accountants WHERE cabinet_id IS NULL LOOP
+    INSERT INTO cabinets (
+      name, stripe_customer_id, stripe_subscription_id, subscription_plan,
+      subscription_status, subscription_current_period_end, trial_end
+    )
+    VALUES (
+      rec.full_name, rec.stripe_customer_id, rec.stripe_subscription_id,
+      rec.subscription_plan, rec.subscription_status,
+      rec.subscription_current_period_end, rec.trial_end
+    )
+    RETURNING id INTO new_cabinet_id;
+
+    UPDATE accountants SET cabinet_id = new_cabinet_id, role = 'owner' WHERE id = rec.id;
+  END LOOP;
+END $$;
+
+ALTER TABLE accountants ALTER COLUMN cabinet_id SET NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_accountants_cabinet_id ON accountants (cabinet_id);
+
+-- mandants garde accountant_id (qui a donne le consentement, utile pour
+-- l'audit) mais l'acces/la liste passent desormais par cabinet_id : tout
+-- membre du cabinet voit le mandat, pas seulement qui l'a connecte.
+ALTER TABLE mandants ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id);
+UPDATE mandants m SET cabinet_id = a.cabinet_id
+  FROM accountants a
+  WHERE m.accountant_id = a.id AND m.cabinet_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_mandants_cabinet_id ON mandants (cabinet_id);
+
+-- Invitations : pas d'envoi d'email automatise (pas d'infra email a ce
+-- stade, cf. vatu/decisions.md Phase 1) - l'owner copie/colle le lien
+-- lui-meme. Un token oppaque suffit, pas besoin d'expiration stricte en V1.
+CREATE TABLE IF NOT EXISTS cabinet_invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cabinet_id UUID NOT NULL REFERENCES cabinets(id),
+  email TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_by UUID NOT NULL REFERENCES accountants(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  accepted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_cabinet_invitations_cabinet_id ON cabinet_invitations (cabinet_id);
+

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 function LoginPage({
   defaultEmail = "",
@@ -16,6 +17,8 @@ function LoginPage({
   const [registerFullName, setRegisterFullName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite") || "";
 
   async function onLoginSubmit(event) {
     event.preventDefault();
@@ -27,7 +30,8 @@ function LoginPage({
     await onRegister({
       fullName: registerFullName,
       email: registerEmail,
-      password: registerPassword
+      password: registerPassword,
+      inviteToken
     });
   }
 
@@ -89,7 +93,11 @@ function LoginPage({
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Nouveau compte</p>
           <h2 className="font-display text-2xl font-semibold">Inscription</h2>
-          <p className="mt-1 text-sm text-gray-600">Creez un compte professionnel pour votre cabinet.</p>
+          <p className="mt-1 text-sm text-gray-600">
+            {inviteToken
+              ? "Vous avez ete invite a rejoindre un cabinet existant sur Vatu."
+              : "Creez un compte professionnel pour votre cabinet."}
+          </p>
         </div>
 
         <form className="space-y-3" onSubmit={onRegisterSubmit}>

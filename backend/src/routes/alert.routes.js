@@ -66,8 +66,8 @@ alertRouter.get("/", requireAuth, async (req, res) => {
       offset: parsePositiveInteger(req.query.offset, 0)
     };
 
-    const rows = await listByAccountant(req.auth.accountantId, filters);
-    const total = await countActiveByAccountant(req.auth.accountantId);
+    const rows = await listByAccountant(req.auth.cabinetId, filters);
+    const total = await countActiveByAccountant(req.auth.cabinetId);
 
     const items = rows.map((row) => ({
       id: row.id,
@@ -112,7 +112,7 @@ alertRouter.get("/portfolio", requireAuth, async (req, res) => {
   try {
     const category = parseCategory(req.query.category);
 
-    const rows = await getPortfolioSummary(req.auth.accountantId, { category });
+    const rows = await getPortfolioSummary(req.auth.cabinetId, { category });
 
     const items = rows.map((row) => ({
       mandantEcb: row.ecb_number,
@@ -146,7 +146,7 @@ alertRouter.post("/:id/acknowledge", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "id must be a valid UUID" });
     }
 
-    const updated = await acknowledgeAlert(alertId, req.auth.accountantId);
+    const updated = await acknowledgeAlert(alertId, { cabinetId: req.auth.cabinetId, accountantId: req.auth.accountantId });
     if (!updated) {
       return res.status(404).json({ message: "Alert not found for authenticated accountant" });
     }
@@ -175,7 +175,7 @@ alertRouter.post("/:id/extract", requireAuth, requireProPlan, async (req, res) =
   }
 
   try {
-    const alert = await getAlertForAccountant(alertId, req.auth.accountantId);
+    const alert = await getAlertForAccountant(alertId, req.auth.cabinetId);
     if (!alert) {
       return res.status(404).json({ message: "Alerte introuvable" });
     }

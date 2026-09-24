@@ -10,13 +10,15 @@ import { BillingPage } from "./pages/BillingPage.jsx";
 import { BillingResultPage } from "./pages/BillingResultPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 import { DemoPage } from "./pages/DemoPage.jsx";
+import { TeamPage } from "./pages/TeamPage.jsx";
 
 const navItems = [
   { to: "/", label: "Dossiers" },
   { to: "/alerts", label: "Alertes" },
   { to: "/analysis", label: "Analyse" },
   { to: "/connect", label: "Connecter" },
-  { to: "/billing", label: "Abonnement" }
+  { to: "/billing", label: "Abonnement" },
+  { to: "/team", label: "Equipe" }
 ];
 
 /**
@@ -203,12 +205,12 @@ export default function App() {
     }
   }
 
-  async function handleRegister({ fullName, email, password }) {
+  async function handleRegister({ fullName, email, password, inviteToken }) {
     try {
       setIsRegistering(true);
       setRegisterError("");
       setRegisterSuccess("");
-      const payload = await registerAccount({ fullName, email, password });
+      const payload = await registerAccount({ fullName, email, password, inviteToken });
       setCurrentUser(payload.user || null);
       const redirected = await redirectToRequestedCheckout(payload.user);
       if (!redirected) {
@@ -298,6 +300,10 @@ export default function App() {
           <Route
             path="/connect/error"
             element={isAuthenticated ? <ConnectResultPage mode="error" /> : <Navigate replace to="/login" />}
+          />
+          <Route
+            path="/team"
+            element={isAuthenticated ? <TeamPage currentUser={currentUser} /> : <Navigate replace to="/login" />}
           />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="*" element={<Navigate replace to={isAuthenticated ? "/" : "/login"} />} />

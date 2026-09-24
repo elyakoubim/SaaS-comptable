@@ -36,7 +36,7 @@ documentRouter.get("/:uuid/content", requireAuth, async (req, res) => {
     // mandants qui lui appartiennent. On répond 404 plutôt que 403 pour ne pas
     // révéler l'existence d'un document appartenant à un autre cabinet.
     const mandant = document ? await findMandantByEcb(document.mandant_ecb) : null;
-    if (!document || !mandant || mandant.accountant_id !== req.auth.accountantId) {
+    if (!document || !mandant || mandant.cabinet_id !== req.auth.cabinetId) {
       return res.status(404).json({ message: "Document introuvable" });
     }
 

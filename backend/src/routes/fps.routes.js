@@ -12,7 +12,7 @@ fpsRouter.post("/connect/start", requireAuth, (req, res) => {
       return res.status(400).json({ message: "ecbNumber must contain exactly 10 digits" });
     }
 
-    const authorizationUrl = buildAuthorizationUrl(String(ecbNumber), req.auth.accountantId);
+    const authorizationUrl = buildAuthorizationUrl(String(ecbNumber), req.auth.accountantId, req.auth.cabinetId);
     return res.json({ authorizationUrl });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -57,7 +57,7 @@ fpsRouter.get("/connect/callback", async (req, res) => {
 
 fpsRouter.get("/mandants", requireAuth, async (req, res) => {
   try {
-    const rows = await listMandantsSummary(req.auth.accountantId);
+    const rows = await listMandantsSummary(req.auth.cabinetId);
     return res.json({ data: rows });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -75,7 +75,7 @@ fpsRouter.post("/tokens/refresh", requireAuth, async (req, res) => {
       }
 
       const mandant = await findMandantByEcb(String(ecbNumber));
-      if (!mandant || mandant.accountant_id !== req.auth.accountantId) {
+      if (!mandant || mandant.cabinet_id !== req.auth.cabinetId) {
         return res.status(404).json({ message: "Mandant not found for authenticated accountant" });
       }
 

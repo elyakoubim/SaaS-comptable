@@ -13,7 +13,7 @@ syncRouter.post("/:cbe", requireAuth, async (req, res) => {
     }
 
     const mandant = await findMandantByEcb(cbe);
-    if (!mandant || mandant.accountant_id !== req.auth.accountantId) {
+    if (!mandant || mandant.cabinet_id !== req.auth.cabinetId) {
       return res.status(404).json({ message: "Mandant not found for authenticated accountant" });
     }
 

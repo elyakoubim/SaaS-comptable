@@ -9,6 +9,7 @@ import { alertRouter } from "./routes/alert.routes.js";
 import { analysisRouter } from "./routes/analysis.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { billingRouter } from "./routes/billing.routes.js";
+import { cabinetRouter } from "./routes/cabinet.routes.js";
 import { stripe, webhookSecret } from "./config/stripe.config.js";
 import { processWebhookEvent } from "./services/billing.service.js";
 import { documentRouter } from "./routes/document.routes.js";
@@ -118,6 +119,7 @@ app.use("/api/analysis", analysisRouter);
 app.use("/api/documents", documentRouter);
 app.use("/api/sync", syncRouter);
 app.use("/api/billing", billingRouter);
+app.use("/api/cabinet", cabinetRouter);
 
 if (hasFrontendBuild) {
   app.use(express.static(frontendDistPath));

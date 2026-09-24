@@ -67,14 +67,14 @@ async function existsForDocument(documentFpsId) {
   return result.rowCount > 0;
 }
 
-async function listByAccountant(accountantId, filters = {}) {
-  if (!accountantId) {
-    throw new Error("accountantId is required");
+async function listByAccountant(cabinetId, filters = {}) {
+  if (!cabinetId) {
+    throw new Error("cabinetId is required");
   }
 
   const { level, category, mandantEcb, acknowledged, limit = 50, offset = 0 } = filters;
-  const params = [accountantId];
-  const conditions = ["m.accountant_id = $1::uuid"];
+  const params = [cabinetId];
+  const conditions = ["m.cabinet_id = $1::uuid"];
 
   if (level) {
     params.push(level);
@@ -145,9 +145,9 @@ async function listByAccountant(accountantId, filters = {}) {
  * (via le mandant), pour la route d'extraction IA - on ne veut jamais
  * declencher une lecture de document pour un cabinet qui n'y a pas droit.
  */
-async function getAlertForAccountant(alertId, accountantId) {
-  if (!alertId || !accountantId) {
-    throw new Error("alertId and accountantId are required");
+async function getAlertForAccountant(alertId, cabinetId) {
+  if (!alertId || !cabinetId) {
+    throw new Error("alertId and cabinetId are required");
   }
 
   const query = `
@@ -164,11 +164,11 @@ async function getAlertForAccountant(alertId, accountantId) {
     FROM alerts a
     INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
     WHERE a.id = $1::uuid
-      AND m.accountant_id = $2::uuid
+      AND m.cabinet_id = $2::uuid
     LIMIT 1
   `;
 
-  const result = await db.query(query, [alertId, accountantId]);
+  const result = await db.query(query, [alertId, cabinetId]);
   return result.rows[0] || null;
 }
 
@@ -201,9 +201,12 @@ async function saveExtraction(alertId, { montant, dateEcheance, reference, accro
   return result.rows[0] || null;
 }
 
-async function acknowledgeAlert(alertId, accountantId) {
-  if (!alertId || !accountantId) {
-    throw new Error("alertId and accountantId are required");
+// `accountantId` reste l'identite qui a traite l'alerte (audit), tandis que
+// `cabinetId` verifie que le mandant appartient bien au cabinet du demandeur -
+// n'importe quel membre du cabinet peut acquitter une alerte de ses dossiers.
+async function acknowledgeAlert(alertId, { cabinetId, accountantId }) {
+  if (!alertId || !cabinetId || !accountantId) {
+    throw new Error("alertId, cabinetId and accountantId are required");
   }
 
   const query = `
@@ -211,32 +214,32 @@ async function acknowledgeAlert(alertId, accountantId) {
     SET
       statut = 'acknowledged',
       acknowledged_at = NOW(),
-      acknowledged_by = $2::uuid
+      acknowledged_by = $3::uuid
     FROM mandants m
     WHERE a.id = $1::uuid
       AND a.mandant_ecb = m.ecb_number
-      AND m.accountant_id = $2::uuid
+      AND m.cabinet_id = $2::uuid
     RETURNING a.id, a.statut, a.acknowledged_at, a.acknowledged_by
   `;
 
-  const result = await db.query(query, [alertId, accountantId]);
+  const result = await db.query(query, [alertId, cabinetId, accountantId]);
   return result.rows[0] || null;
 }
 
-async function countActiveByAccountant(accountantId) {
-  if (!accountantId) {
-    throw new Error("accountantId is required");
+async function countActiveByAccountant(cabinetId) {
+  if (!cabinetId) {
+    throw new Error("cabinetId is required");
   }
 
   const query = `
     SELECT COUNT(*)::int AS total
     FROM alerts a
     INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
-    WHERE m.accountant_id = $1::uuid
+    WHERE m.cabinet_id = $1::uuid
       AND a.statut = 'active'
   `;
 
-  const result = await db.query(query, [accountantId]);
+  const result = await db.query(query, [cabinetId]);
   return result.rows[0]?.total || 0;
 }
 
@@ -249,9 +252,9 @@ async function countActiveByAccountant(accountantId) {
  * (compteurs et alerte la plus urgente) aux alertes de cette catégorie
  * seulement — les onze valeurs de `CATEGORIES` dans documentClassifier.service.js.
  */
-async function getPortfolioSummary(accountantId, filters = {}) {
-  if (!accountantId) {
-    throw new Error("accountantId is required");
+async function getPortfolioSummary(cabinetId, filters = {}) {
+  if (!cabinetId) {
+    throw new Error("cabinetId is required");
   }
 
   const { category = null } = filters;
@@ -269,7 +272,7 @@ async function getPortfolioSummary(accountantId, filters = {}) {
       LEFT JOIN alerts a
         ON a.mandant_ecb = m.ecb_number
         AND ($2::text IS NULL OR a.category = $2::text)
-      WHERE m.accountant_id = $1::uuid
+      WHERE m.cabinet_id = $1::uuid
       GROUP BY m.ecb_number, m.company_name, m.last_sync_at
     ),
     ranked AS (
@@ -305,7 +308,7 @@ async function getPortfolioSummary(accountantId, filters = {}) {
     ORDER BY c.critical_count DESC, c.warning_count DESC, c.info_count DESC, c.company_name ASC
   `;
 
-  const result = await db.query(query, [accountantId, category]);
+  const result = await db.query(query, [cabinetId, category]);
   return result.rows;
 }
 

@@ -1,9 +1,14 @@
 import { db } from "../config/db.js";
 
+// `accountantId` reste l'audit ("qui a donne le consentement"), `cabinetId`
+// devient la cle d'acces reelle : tout membre du cabinet voit le mandat, pas
+// seulement celui qui l'a connecte (cf. decision multi-utilisateurs du
+// 24/09/2026).
 async function upsertMandantTokens({
   ecbNumber,
   companyName,
   accountantId,
+  cabinetId,
   accessTokenEncrypted,
   refreshTokenEncrypted,
   tokenExpiry,
@@ -11,11 +16,16 @@ async function upsertMandantTokens({
   consentGivenBy,
   status = "ok"
 }) {
+  if (!cabinetId) {
+    throw new Error("cabinetId is required to upsert a mandant");
+  }
+
   const query = `
     INSERT INTO mandants (
       ecb_number,
       company_name,
       accountant_id,
+      cabinet_id,
       access_token_encrypted,
       refresh_token_encrypted,
       token_expiry,
@@ -27,17 +37,19 @@ async function upsertMandantTokens({
       $1,
       $2,
       $3::uuid,
-      $4,
+      $4::uuid,
       $5,
-      $6::timestamptz,
-      $7,
-      $8::timestamptz,
-      $9,
+      $6,
+      $7::timestamptz,
+      $8,
+      $9::timestamptz,
+      $10,
       NOW()
     )
     ON CONFLICT (ecb_number) DO UPDATE SET
       company_name = EXCLUDED.company_name,
       accountant_id = EXCLUDED.accountant_id,
+      cabinet_id = EXCLUDED.cabinet_id,
       access_token_encrypted = EXCLUDED.access_token_encrypted,
       refresh_token_encrypted = EXCLUDED.refresh_token_encrypted,
       token_expiry = EXCLUDED.token_expiry,
@@ -51,6 +63,7 @@ async function upsertMandantTokens({
     ecbNumber,
     companyName || null,
     accountantId,
+    cabinetId,
     accessTokenEncrypted,
     refreshTokenEncrypted,
     tokenExpiry,
@@ -66,6 +79,7 @@ async function findMandantByEcb(ecbNumber) {
       ecb_number,
       company_name,
       accountant_id,
+      cabinet_id,
       access_token_encrypted,
       refresh_token_encrypted,
       token_expiry,
@@ -82,9 +96,9 @@ async function findMandantByEcb(ecbNumber) {
   return result.rows[0] || null;
 }
 
-async function listMandantsSummary(accountantId) {
-  if (!accountantId) {
-    throw new Error("accountantId is required");
+async function listMandantsSummary(cabinetId) {
+  if (!cabinetId) {
+    throw new Error("cabinetId is required");
   }
 
   const query = `
@@ -98,12 +112,12 @@ async function listMandantsSummary(accountantId) {
       COUNT(a.id) FILTER (WHERE a.statut = 'active' AND a.niveau IN ('warning', 'critical')) AS active_alert_count
     FROM mandants m
     LEFT JOIN alerts a ON a.mandant_ecb = m.ecb_number
-    WHERE m.accountant_id = $1::uuid
+    WHERE m.cabinet_id = $1::uuid
     GROUP BY m.ecb_number, m.company_name, m.status, m.token_expiry, m.consent_given_at, m.last_sync_at
     ORDER BY m.company_name NULLS LAST, m.ecb_number
   `;
 
-  const result = await db.query(query, [accountantId]);
+  const result = await db.query(query, [cabinetId]);
   return result.rows.map((row) => ({
     ecbNumber: row.ecb_number,
     companyName: row.company_name,

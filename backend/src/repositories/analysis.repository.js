@@ -20,7 +20,7 @@ import { db } from "../config/db.js";
  * La classification en familles se fait ensuite en JS : la table `documents`
  * ne stocke que le libellé brut du SPF.
  */
-async function countDocumentsByType(accountantId, windowDays = 60) {
+async function countDocumentsByType(cabinetId, windowDays = 60) {
   const query = `
     SELECT
       m.ecb_number,
@@ -34,12 +34,12 @@ async function countDocumentsByType(accountantId, windowDays = 60) {
     LEFT JOIN documents d
       ON d.mandant_ecb = m.ecb_number
      AND d.publish_date >= NOW() - make_interval(days => $2::int)
-    WHERE m.accountant_id = $1::uuid
+    WHERE m.cabinet_id = $1::uuid
     GROUP BY m.ecb_number, m.company_name, m.status, m.last_sync_at, d.document_type_fps
     ORDER BY m.ecb_number, total DESC
   `;
 
-  const result = await db.query(query, [accountantId, windowDays]);
+  const result = await db.query(query, [cabinetId, windowDays]);
   return result.rows;
 }
 
@@ -48,7 +48,7 @@ async function countDocumentsByType(accountantId, windowDays = 60) {
  * vieille. C'est l'ancienneté qui porte le signal : une alerte critique
  * ouverte depuis trois semaines dit quelque chose qu'un simple compteur tait.
  */
-async function countActiveAlertsByLevel(accountantId) {
+async function countActiveAlertsByLevel(cabinetId) {
   const query = `
     SELECT
       a.mandant_ecb,
@@ -57,12 +57,12 @@ async function countActiveAlertsByLevel(accountantId) {
       MIN(a.triggered_at) AS oldest_triggered_at
     FROM alerts a
     INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
-    WHERE m.accountant_id = $1::uuid
+    WHERE m.cabinet_id = $1::uuid
       AND a.statut = 'active'
     GROUP BY a.mandant_ecb, a.niveau
   `;
 
-  const result = await db.query(query, [accountantId]);
+  const result = await db.query(query, [cabinetId]);
   return result.rows;
 }
 

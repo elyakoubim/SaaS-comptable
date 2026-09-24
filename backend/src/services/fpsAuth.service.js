@@ -118,6 +118,7 @@ async function callTokenEndpoint(body) {
 async function persistTokenSet({
   ecbNumber,
   accountantId,
+  cabinetId,
   tokenSet,
   fallbackCompanyName,
   consentGivenAt,
@@ -132,6 +133,10 @@ async function persistTokenSet({
 
   if (!accountantId) {
     throw new Error("accountantId is required to persist FPS tokens");
+  }
+
+  if (!cabinetId) {
+    throw new Error("cabinetId is required to persist FPS tokens");
   }
 
   // Le SPF ne fournit jamais de nom d'entreprise (ni customerName sur le
@@ -149,6 +154,7 @@ async function persistTokenSet({
     ecbNumber,
     companyName,
     accountantId,
+    cabinetId,
     accessTokenEncrypted: encryptText(tokenSet.access_token),
     refreshTokenEncrypted: encryptText(tokenSet.refresh_token),
     tokenExpiry: new Date(now + expiresInMs).toISOString(),
@@ -158,9 +164,12 @@ async function persistTokenSet({
   });
 }
 
-function buildAuthorizationUrl(ecbNumber, accountantId) {
+function buildAuthorizationUrl(ecbNumber, accountantId, cabinetId) {
   if (!accountantId) {
     throw new Error("Authenticated accountant is required");
+  }
+  if (!cabinetId) {
+    throw new Error("Authenticated cabinet is required");
   }
 
   const requiresClientKey = fpsConfig.clientAuthMethod !== "none";
@@ -195,6 +204,7 @@ function buildAuthorizationUrl(ecbNumber, accountantId) {
 
   saveLoginFlow(state, {
     accountantId,
+    cabinetId,
     ecbNumber,
     nonce,
     codeVerifier
@@ -220,7 +230,7 @@ async function exchangeAuthorizationCode({ code, state }) {
   if (!flow) {
     throw new Error("Invalid or expired state");
   }
-  if (!flow.accountantId) {
+  if (!flow.accountantId || !flow.cabinetId) {
     throw new Error("Missing authenticated accountant context for this state");
   }
 
@@ -246,6 +256,7 @@ async function exchangeAuthorizationCode({ code, state }) {
     await persistTokenSet({
       ecbNumber: flow.ecbNumber,
       accountantId: flow.accountantId,
+      cabinetId: flow.cabinetId,
       tokenSet,
       fallbackCompanyName: tokenSet.customerName || null,
       consentGivenAt: new Date().toISOString(),
@@ -307,6 +318,7 @@ async function refreshMandantByEcb(ecbNumber) {
     await persistTokenSet({
       ecbNumber,
       accountantId: mandant.accountant_id,
+      cabinetId: mandant.cabinet_id,
       tokenSet,
       fallbackCompanyName: mandant.company_name,
       consentGivenAt: mandant.consent_given_at,
