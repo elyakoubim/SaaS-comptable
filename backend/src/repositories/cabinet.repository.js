@@ -123,6 +123,33 @@ async function markInvitationAccepted(invitationId) {
   return result.rows[0] || null;
 }
 
+// Cabinets ayant au moins un membre - c'est le seul prerequis pour le recap
+// quotidien (contrairement au gating Vatu Pro, la notification n'est pas
+// reservee a un plan : un cabinet Connect a autant besoin d'etre prevenu).
+async function listCabinetsForDigest() {
+  const query = `
+    SELECT
+      c.id,
+      c.name,
+      c.last_digest_sent_at,
+      json_agg(json_build_object('email', a.email, 'fullName', a.full_name)) AS members
+    FROM cabinets c
+    INNER JOIN accountants a ON a.cabinet_id = c.id
+    GROUP BY c.id, c.name, c.last_digest_sent_at
+  `;
+  const result = await db.query(query);
+  return result.rows;
+}
+
+async function markDigestSent(cabinetId, at = new Date()) {
+  const query = `
+    UPDATE cabinets
+    SET last_digest_sent_at = $2::timestamptz
+    WHERE id = $1::uuid
+  `;
+  await db.query(query, [cabinetId, at.toISOString()]);
+}
+
 export {
   createCabinet,
   findCabinetById,
@@ -132,5 +159,7 @@ export {
   listMembers,
   createInvitation,
   findInvitationByToken,
-  markInvitationAccepted
+  markInvitationAccepted,
+  listCabinetsForDigest,
+  markDigestSent
 };

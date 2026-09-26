@@ -312,6 +312,45 @@ async function getPortfolioSummary(cabinetId, filters = {}) {
   return result.rows;
 }
 
+/**
+ * Alertes du cabinet apparues depuis une date donnee - sert au recap
+ * quotidien par email (cf. vatu/decisions.md, 24/09/2026). Base sur
+ * `triggered_at`, pas sur `statut` : le recap montre ce qui est nouveau,
+ * qu'il ait deja ete acquitte entre-temps ou non.
+ */
+async function listAlertsSince(cabinetId, since) {
+  if (!cabinetId || !since) {
+    throw new Error("cabinetId and since are required");
+  }
+
+  const query = `
+    SELECT
+      a.id,
+      a.niveau,
+      a.titre,
+      a.category,
+      a.document_date,
+      a.triggered_at,
+      m.company_name,
+      m.ecb_number
+    FROM alerts a
+    INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
+    WHERE m.cabinet_id = $1::uuid
+      AND a.triggered_at > $2::timestamptz
+    ORDER BY
+      CASE a.niveau
+        WHEN 'critical' THEN 0
+        WHEN 'warning' THEN 1
+        WHEN 'info' THEN 2
+        ELSE 3
+      END,
+      a.triggered_at DESC
+  `;
+
+  const result = await db.query(query, [cabinetId, since]);
+  return result.rows;
+}
+
 export {
   createAlert,
   existsForDocument,
@@ -320,5 +359,6 @@ export {
   saveExtraction,
   acknowledgeAlert,
   countActiveByAccountant,
-  getPortfolioSummary
+  getPortfolioSummary,
+  listAlertsSince
 };

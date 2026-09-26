@@ -212,3 +212,8 @@ CREATE TABLE IF NOT EXISTS cabinet_invitations (
 
 CREATE INDEX IF NOT EXISTS idx_cabinet_invitations_cabinet_id ON cabinet_invitations (cabinet_id);
 
+-- Recap quotidien par email (24/09/2026, cf. vatu/decisions.md) : un email par
+-- cabinet, une fois par jour, listant les alertes apparues depuis le dernier
+-- envoi. DEFAULT NOW() evite qu'un cabinet deja existant recoive d'un coup
+-- tout son historique au premier envoi apres deploiement de cette migration.
+ALTER TABLE cabinets ADD COLUMN IF NOT EXISTS last_digest_sent_at TIMESTAMPTZ DEFAULT NOW();

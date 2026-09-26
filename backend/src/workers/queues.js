@@ -28,6 +28,24 @@ const documentSyncQueue = new Queue(DOCUMENT_SYNC_QUEUE_NAME, {
   }
 });
 
+// Recap quotidien par email (cf. digest.service.js) - une seule execution par
+// jour, pas de retry agressif : un echec (ex: Resend indisponible) sera
+// rattrape naturellement au prochain passage sans perte, cf. digest.service.js.
+const EMAIL_DIGEST_QUEUE_NAME = "email-digest";
+
+const emailDigestQueue = new Queue(EMAIL_DIGEST_QUEUE_NAME, {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 2,
+    removeOnComplete: { count: 30 },
+    removeOnFail: { count: 30 },
+    backoff: {
+      type: "exponential",
+      delay: 10 * 60 * 1000
+    }
+  }
+});
+
 async function enqueueRefreshForMandant(ecbNumber) {
   await refreshQueue.add("refresh-one", { ecbNumber });
 }
@@ -95,5 +113,7 @@ export {
   enqueueBulkRefresh,
   documentSyncQueue,
   enqueueDocumentSyncForMandant,
-  DOCUMENT_SYNC_QUEUE_NAME
+  DOCUMENT_SYNC_QUEUE_NAME,
+  emailDigestQueue,
+  EMAIL_DIGEST_QUEUE_NAME
 };

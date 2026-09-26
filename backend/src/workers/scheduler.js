@@ -21,8 +21,11 @@ import {
   DOCUMENT_SYNC_QUEUE_NAME,
   documentSyncQueue,
   enqueueDocumentSyncForMandant,
-  refreshQueue
+  refreshQueue,
+  emailDigestQueue,
+  EMAIL_DIGEST_QUEUE_NAME
 } from "./queues.js";
+import { runDailyDigest } from "../services/digest.service.js";
 
 // Le SPF conserve 60 jours glissants : au-dela, un document n'est plus
 // telechargeable. C'est donc le plancher absolu de toute recherche.
@@ -261,5 +264,35 @@ await documentSyncQueue.upsertJobScheduler("hourly-document-sync", {
   data: { source: "scheduler" }
 });
 
+const emailDigestWorker = new Worker(
+  EMAIL_DIGEST_QUEUE_NAME,
+  async () => {
+    await runDailyDigest();
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1
+  }
+);
+
+emailDigestWorker.on("completed", (job) => {
+  console.log(`[digest-worker] job completed: ${job.id}`);
+});
+
+emailDigestWorker.on("failed", (job, err) => {
+  console.error(`[digest-worker] job failed: ${job?.id} -> ${err.message}`);
+});
+
+// 7h00 Europe/Brussels (le fuseau gere automatiquement le passage heure
+// ete/hiver, contrairement a un cron UTC fixe).
+await emailDigestQueue.upsertJobScheduler("daily-email-digest", {
+  pattern: "0 7 * * *",
+  tz: "Europe/Brussels"
+}, {
+  name: "send-digest",
+  data: { source: "scheduler" }
+});
+
 console.log("BullMQ scheduler/worker started");
 console.log("Document sync worker started (hourly fan-out at minute 20)");
+console.log("Email digest worker started (daily at 07:00 Europe/Brussels)");
