@@ -12,9 +12,9 @@ function formatDate(value) {
 }
 
 /**
- * Gestion d'equipe du cabinet. Tout membre voit la liste (coherent avec
+ * Gestion d'équipe du cabinet. Tout membre voit la liste (cohérent avec
  * "tout le monde voit tout" sur les dossiers), seul le owner peut inviter
- * (decision multi-utilisateurs du 24/09/2026).
+ * (décision multi-utilisateurs du 24/09/2026).
  */
 function TeamPage({ currentUser }) {
   const [members, setMembers] = useState([]);
@@ -41,7 +41,7 @@ function TeamPage({ currentUser }) {
         }
       } catch (error) {
         if (!cancelled) {
-          setLoadError(error.message || "Impossible de charger l'equipe");
+          setLoadError(error.message || "Impossible de charger l'équipe");
         }
       } finally {
         if (!cancelled) {
@@ -86,9 +86,9 @@ function TeamPage({ currentUser }) {
     <section className="mx-auto mt-6 max-w-4xl space-y-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Cabinet</p>
-        <h1 className="font-display text-2xl font-semibold">Equipe</h1>
+        <h1 className="font-display text-2xl font-semibold">Équipe</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Tous les membres de votre cabinet voient les memes dossiers et alertes.
+          Tous les membres de votre cabinet voient les mêmes dossiers et alertes.
         </p>
       </div>
 
@@ -122,10 +122,10 @@ function TeamPage({ currentUser }) {
 
       {isOwner && (
         <article className="rounded-2xl border border-line bg-white p-6 shadow-floating">
-          <h2 className="mb-1 text-sm font-semibold text-gray-700">Inviter un collegue</h2>
+          <h2 className="mb-1 text-sm font-semibold text-gray-700">Inviter un collègue</h2>
           <p className="mb-3 text-sm text-gray-600">
-            Generez un lien d'inscription pour ajouter un membre a votre cabinet. Il aura acces aux
-            memes dossiers, mais pas a la facturation.
+            Générez un lien d'inscription pour ajouter un membre à votre cabinet. Il aura accès aux
+            mêmes dossiers, mais pas à la facturation.
           </p>
 
           <form className="flex flex-col gap-2 sm:flex-row" onSubmit={onInviteSubmit}>
@@ -141,7 +141,7 @@ function TeamPage({ currentUser }) {
               disabled={isInviting || !inviteEmail}
               type="submit"
             >
-              {isInviting ? "Envoi..." : "Generer le lien"}
+              {isInviting ? "Envoi..." : "Générer le lien"}
             </button>
           </form>
 
