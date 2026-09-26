@@ -64,7 +64,7 @@ async function createAccountant({ email, passwordHash, fullName, cabinetId, role
 
 async function findAccountantByEmail(email) {
   const query = `
-    SELECT id, email, password_hash, full_name, created_at
+    SELECT id, email, password_hash, full_name, created_at, cabinet_id, role
     FROM accountants
     WHERE email = $1
     LIMIT 1

@@ -126,7 +126,8 @@ authRouter.post("/login", loginRateLimiter, async (req, res) => {
       user: {
         id: accountant.id,
         email: accountant.email,
-        fullName: accountant.full_name
+        fullName: accountant.full_name,
+        role: accountant.role
       }
     });
   } catch (error) {
