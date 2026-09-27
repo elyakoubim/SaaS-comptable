@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-const PRICING_URL = "https://vatu.be/pricing";
-
 function LoginPage({
   defaultEmail = "",
   isLoggingIn = false,
@@ -44,7 +42,7 @@ function LoginPage({
           {planNotice}
         </p>
       )}
-      <div className={`grid gap-5 ${inviteToken ? "lg:grid-cols-2" : "lg:grid-cols-[1.3fr_1fr]"}`}>
+      <div className="grid gap-5 lg:grid-cols-2">
       <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Espace cabinet</p>
@@ -88,100 +86,78 @@ function LoginPage({
           >
             {isLoggingIn ? "Connexion..." : "Se connecter"}
           </button>
-
-          {!inviteToken && (
-            <p className="pt-1 text-center text-xs text-gray-500">
-              Pas encore de compte ?{" "}
-              <a className="font-medium text-accent hover:text-accent-strong" href={PRICING_URL}>
-                Créer un compte
-              </a>
-            </p>
-          )}
         </form>
       </article>
 
-      {inviteToken ? (
-        <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
-          <div className="mb-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Nouveau compte</p>
-            <h2 className="font-display text-2xl font-semibold">Inscription</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Vous avez ete invite a rejoindre un cabinet existant sur Vatu.
-            </p>
-          </div>
-
-          <form className="space-y-3" onSubmit={onRegisterSubmit}>
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="register-fullname">
-              Nom complet
-            </label>
-            <input
-              autoComplete="name"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
-              id="register-fullname"
-              placeholder="Votre fiduciaire"
-              type="text"
-              value={registerFullName}
-              onChange={(event) => setRegisterFullName(event.target.value)}
-            />
-
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="register-email">
-              Email professionnel
-            </label>
-            <input
-              autoComplete="email"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
-              id="register-email"
-              placeholder="contact@cabinet.be"
-              type="email"
-              value={registerEmail}
-              onChange={(event) => setRegisterEmail(event.target.value)}
-            />
-
-            <label className="block text-sm font-semibold text-gray-700" htmlFor="register-password">
-              Mot de passe
-            </label>
-            <input
-              autoComplete="new-password"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
-              id="register-password"
-              placeholder="Minimum 8 caracteres"
-              type="password"
-              value={registerPassword}
-              onChange={(event) => setRegisterPassword(event.target.value)}
-            />
-
-            {registerError && (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{registerError}</p>
-            )}
-            {registerSuccess && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {registerSuccess}
-              </p>
-            )}
-
-            <button
-              className="w-full rounded-lg border border-line bg-white px-4 py-2 text-sm font-semibold text-ink shadow-soft transition hover:bg-gray-50 disabled:opacity-70"
-              disabled={isRegistering}
-              type="submit"
-            >
-              {isRegistering ? "Inscription..." : "Creer mon compte"}
-            </button>
-          </form>
-        </article>
-      ) : (
-        <article className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-gray-50 p-6 text-center sm:p-7">
-          <p className="text-sm font-semibold text-gray-700">Pas encore de compte ?</p>
+      <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
+        <div className="mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Nouveau compte</p>
+          <h2 className="font-display text-2xl font-semibold">Inscription</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Choisissez un plan sur la page tarifs : la création de compte se fait à cette étape.
+            {inviteToken
+              ? "Vous avez ete invite a rejoindre un cabinet existant sur Vatu."
+              : "Creez un compte professionnel pour votre cabinet."}
           </p>
-          <a
-            className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-strong"
-            href={PRICING_URL}
+        </div>
+
+        <form className="space-y-3" onSubmit={onRegisterSubmit}>
+          <label className="block text-sm font-semibold text-gray-700" htmlFor="register-fullname">
+            Nom complet
+          </label>
+          <input
+            autoComplete="name"
+            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
+            id="register-fullname"
+            placeholder="Votre fiduciaire"
+            type="text"
+            value={registerFullName}
+            onChange={(event) => setRegisterFullName(event.target.value)}
+          />
+
+          <label className="block text-sm font-semibold text-gray-700" htmlFor="register-email">
+            Email professionnel
+          </label>
+          <input
+            autoComplete="email"
+            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
+            id="register-email"
+            placeholder="contact@cabinet.be"
+            type="email"
+            value={registerEmail}
+            onChange={(event) => setRegisterEmail(event.target.value)}
+          />
+
+          <label className="block text-sm font-semibold text-gray-700" htmlFor="register-password">
+            Mot de passe
+          </label>
+          <input
+            autoComplete="new-password"
+            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
+            id="register-password"
+            placeholder="Minimum 8 caracteres"
+            type="password"
+            value={registerPassword}
+            onChange={(event) => setRegisterPassword(event.target.value)}
+          />
+
+          {registerError && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{registerError}</p>
+          )}
+          {registerSuccess && (
+            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {registerSuccess}
+            </p>
+          )}
+
+          <button
+            className="w-full rounded-lg border border-line bg-white px-4 py-2 text-sm font-semibold text-ink shadow-soft transition hover:bg-gray-50 disabled:opacity-70"
+            disabled={isRegistering}
+            type="submit"
           >
-            Voir les tarifs →
-          </a>
-        </article>
-      )}
+            {isRegistering ? "Inscription..." : "Creer mon compte"}
+          </button>
+        </form>
+      </article>
       </div>
     </section>
   );
