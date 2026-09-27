@@ -119,7 +119,7 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout }) {
 
       <footer className="border-t border-line">
         <div className="mx-auto w-full max-w-7xl px-4 py-5 text-xs text-muted sm:px-6 lg:px-8">
-          Vatu passe par l'API officielle du SPF Finances, en lecture seule. La décision finale —
+          Vatu passe par une connexion officielle et sécurisée, en lecture seule. La décision finale —
           valider, encoder, payer — vous revient.
         </div>
       </footer>
