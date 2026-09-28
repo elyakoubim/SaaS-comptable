@@ -80,6 +80,68 @@ async function sendDigestEmail({ to, cabinetName, alerts }) {
   }
 }
 
+/**
+ * Alerte immédiate (28/09/2026, point #15) : distincte du récap quotidien,
+ * envoyée dès qu'un document classé `critical` (recouvrement, sanction,
+ * défaut constaté) apparaît — cf. workers/scheduler.js, appelée à la fin du
+ * job de synchronisation d'un mandant, une fois par lot de documents
+ * nouvellement vus dans cette synchronisation (pas un email par document :
+ * une synchro qui ramène 3 sommations d'un coup envoie un seul email).
+ *
+ * Se cumule volontairement avec le récap quotidien (qui reste le filet de
+ * sécurité en cas d'échec d'envoi ici, ou pour les niveaux warning/info) :
+ * la personne peut donc revoir une alerte critique une seconde fois dans son
+ * récap du lendemain. C'est le prix à payer pour ne jamais rater une
+ * sommation en attendant un résumé qui n'arrive qu'une fois par jour.
+ */
+function renderImmediateAlertHtml({ cabinetName, alerts, appUrl }) {
+  const plural = alerts.length > 1;
+  const rows = alerts
+    .map(
+      (alert) => `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;">
+            <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${LEVEL_COLORS.critical}1a;color:${LEVEL_COLORS.critical};font-size:12px;font-weight:600;">Critique</span>
+            <div style="margin-top:6px;font-size:14px;color:#111827;font-weight:600;">${escapeHtml(alert.company_name || alert.ecb_number)}</div>
+            <div style="font-size:13px;color:#4b5563;">${escapeHtml(alert.titre)}${alert.document_date ? ` · ${formatDate(alert.document_date)}` : ""}</div>
+          </td>
+        </tr>`
+    )
+    .join("");
+
+  return `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;">
+      <h1 style="font-size:18px;color:#dc2626;">⚠ Vatu — ${alerts.length} alerte${plural ? "s" : ""} critique${plural ? "s" : ""}</h1>
+      <p style="font-size:14px;color:#4b5563;">
+        ${plural ? "Ces documents viennent" : "Ce document vient"} d'arriver sur MyMinfin pour ${escapeHtml(cabinetName || "votre cabinet")}
+        et ${plural ? "demandent" : "demande"} une action immédiate — recouvrement, sanction ou défaut constaté.
+      </p>
+      <table style="width:100%;border-collapse:collapse;">${rows}</table>
+      <p style="margin-top:20px;">
+        <a href="${escapeHtml(appUrl)}/alerts" style="display:inline-block;padding:10px 16px;background:#dc2626;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Voir sur Vatu</a>
+      </p>
+    </div>`;
+}
+
+async function sendImmediateCriticalAlertEmail({ to, cabinetName, alerts }) {
+  if (!resendClient) {
+    throw new NotificationUnavailableError("RESEND_API_KEY non configure");
+  }
+  if (!Array.isArray(alerts) || alerts.length === 0) {
+    return;
+  }
+
+  const appUrl = process.env.FRONTEND_URL || "https://app.vatu.be";
+  const html = renderImmediateAlertHtml({ cabinetName, alerts, appUrl });
+  const plural = alerts.length > 1;
+  const subject = `Vatu — ${alerts.length} alerte${plural ? "s" : ""} critique${plural ? "s" : ""} à traiter`;
+
+  const { error } = await resendClient.emails.send({ from: fromAddress, to, subject, html });
+  if (error) {
+    throw new Error(`Resend a refuse l'envoi: ${error.message || JSON.stringify(error)}`);
+  }
+}
+
 function renderPasswordResetHtml({ resetUrl }) {
   return `
     <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;">
@@ -156,6 +218,8 @@ async function sendVerificationEmail({ to, verifyUrl }) {
 export {
   sendDigestEmail,
   renderDigestHtml,
+  sendImmediateCriticalAlertEmail,
+  renderImmediateAlertHtml,
   sendPasswordResetEmail,
   sendVerificationEmail,
   NotificationUnavailableError

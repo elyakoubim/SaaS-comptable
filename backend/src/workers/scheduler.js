@@ -36,6 +36,8 @@ import { upsertDocument } from "../repositories/document.repository.js";
 import { createAlert, existsForDocument } from "../repositories/alert.repository.js";
 import { recordSyncRun } from "../repositories/syncRun.repository.js";
 import { decryptText } from "../utils/tokenCrypto.js";
+import { listMembers, findCabinetById } from "../repositories/cabinet.repository.js";
+import { sendImmediateCriticalAlertEmail, NotificationUnavailableError } from "../services/notification.service.js";
 
 const SYNC_JOB_TYPE = "document_sync";
 
@@ -147,6 +149,10 @@ async function processDocumentSyncJob(job) {
   try {
     const documents = await searchDocuments(accessToken, ecbNumber, since);
     let createdAlerts = 0;
+    // Alerte immédiate (point #15) : accumulées pendant la boucle, envoyées
+    // en UN SEUL email à la fin — une synchro qui ramène trois sommations
+    // d'un coup ne doit pas envoyer trois emails séparés.
+    const newCriticalAlerts = [];
 
     for (const doc of documents) {
       if (!doc.uuid) {
@@ -189,6 +195,52 @@ async function processDocumentSyncJob(job) {
           documentDate: doc.documentDate
         });
         createdAlerts += 1;
+
+        if (level === "critical") {
+          newCriticalAlerts.push({
+            titre: buildAlertTitle(titleKey, doc.documentType),
+            document_date: doc.documentDate,
+            company_name: mandant?.company_name,
+            ecb_number: ecbNumber
+          });
+        }
+      }
+    }
+
+    if (newCriticalAlerts.length > 0) {
+      // L'envoi de l'alerte immédiate est un plus, pas une condition de la
+      // synchronisation : une panne Resend ou une erreur ici ne doit jamais
+      // faire échouer (ni retenter) tout le job de sync. Le récap quotidien
+      // reste le filet de sécurité si cet envoi échoue.
+      try {
+        const cabinetId = mandant?.cabinet_id;
+        const members = cabinetId ? await listMembers(cabinetId) : [];
+        const recipients = members.map((member) => member.email).filter(Boolean);
+
+        if (recipients.length > 0) {
+          const cabinet = await findCabinetById(cabinetId);
+          await sendImmediateCriticalAlertEmail({
+            to: recipients,
+            cabinetName: cabinet?.name,
+            alerts: newCriticalAlerts
+          });
+          console.log(
+            `[doc-sync] ${ecbNumber}: alerte immediate envoyee (${newCriticalAlerts.length} critique(s)) a ${recipients.length} destinataire(s)`
+          );
+        } else {
+          console.warn(`[doc-sync] ${ecbNumber}: ${newCriticalAlerts.length} alerte(s) critique(s) mais aucun destinataire (cabinet sans membre ou sans mandant rattache)`);
+        }
+      } catch (notifyError) {
+        if (notifyError instanceof NotificationUnavailableError) {
+          console.warn(`[doc-sync] ${ecbNumber}: alerte immediate non envoyee - ${notifyError.message}`);
+        } else {
+          console.error(`[doc-sync] ${ecbNumber}: echec envoi alerte immediate:`, notifyError.message);
+          if (isSentryEnabled) {
+            Sentry.captureException(notifyError, {
+              tags: { queue: "fps-document-sync", stage: "immediate-critical-alert" }
+            });
+          }
+        }
       }
     }
 
