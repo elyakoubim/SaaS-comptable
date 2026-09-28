@@ -56,9 +56,15 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout }) {
     <div className="min-h-screen bg-canvas font-body text-ink">
       <header className="sticky top-0 z-20 border-b border-line bg-white/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <Link className="shrink-0" to={isAuthenticated ? "/" : "/login"}>
-            <VatuMark />
-          </Link>
+          {isAuthenticated ? (
+            <Link className="shrink-0" to="/">
+              <VatuMark />
+            </Link>
+          ) : (
+            <a className="shrink-0" href="https://vatu.be">
+              <VatuMark />
+            </a>
+          )}
 
           {isAuthenticated && (
             <nav className="order-3 flex w-full flex-wrap items-center gap-1 sm:order-none sm:w-auto sm:pl-6">
