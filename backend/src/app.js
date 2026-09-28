@@ -10,6 +10,7 @@ import { analysisRouter } from "./routes/analysis.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { billingRouter } from "./routes/billing.routes.js";
 import { cabinetRouter } from "./routes/cabinet.routes.js";
+import { adminRouter } from "./routes/admin.routes.js";
 import { stripe, webhookSecret } from "./config/stripe.config.js";
 import { processWebhookEvent } from "./services/billing.service.js";
 import { documentRouter } from "./routes/document.routes.js";
@@ -24,6 +25,7 @@ const __dirname = dirname(__filename);
 const frontendDistPath = resolve(__dirname, "..", "..", "frontend", "dist");
 const hasFrontendBuild = existsSync(frontendDistPath);
 const jwksPath = resolve(__dirname, "..", "keys", "jwks.json");
+const internalPublicPath = resolve(__dirname, "public");
 
 app.set("trust proxy", Number(process.env.TRUST_PROXY ?? 0));
 
@@ -113,6 +115,14 @@ app.get("/.well-known/jwks.json", (_req, res) => {
   return res.sendFile(jwksPath);
 });
 
+// Outil interne de revue de "Lire avec l'IA" (point #21) - une page statique
+// hors de l'app React, jamais livree aux cabinets clients. Ce express.static
+// ne sert que le HTML/JS de la page ; les donnees restent derriere le secret
+// verifie par admin.routes.js.
+if (existsSync(internalPublicPath)) {
+  app.use("/internal", express.static(internalPublicPath));
+}
+
 app.use("/api/auth", authRouter);
 app.use("/api/fps", fpsRouter);
 app.use("/api/alerts", alertRouter);
@@ -121,6 +131,7 @@ app.use("/api/documents", documentRouter);
 app.use("/api/sync", syncRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/cabinet", cabinetRouter);
+app.use("/api/admin", adminRouter);
 
 if (hasFrontendBuild) {
   app.use(express.static(frontendDistPath));

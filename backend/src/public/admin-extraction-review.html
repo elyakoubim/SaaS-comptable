@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vatu - Revue extraction IA</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    background: #f4f5f7;
+    color: #1a1a2e;
+  }
+  header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 { font-size: 16px; margin: 0; }
+  header button {
+    background: #2d2d4d;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #stats-panel {
+    background: #fff;
+    margin: 16px 24px;
+    padding: 16px;
+    border-radius: 8px;
+    display: none;
+  }
+  #stats-panel table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #stats-panel th, #stats-panel td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #eee; }
+  #list { padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .card.verified { opacity: 0.55; }
+  .meta { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .meta strong { color: #1a1a2e; }
+  .field-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 14px; }
+  .field-row .label { width: 100px; color: #666; font-size: 12px; text-transform: uppercase; }
+  .field-row .value { flex: 1; font-family: monospace; }
+  .field-row .choice { display: flex; gap: 4px; }
+  .field-row button {
+    border: 1px solid #ccc;
+    background: #fafafa;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .field-row button.active-yes { background: #d4f4dd; border-color: #34a853; }
+  .field-row button.active-no { background: #fbdadb; border-color: #ea4335; }
+  .save-btn {
+    margin-top: 10px;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  iframe { width: 100%; height: 420px; border: 1px solid #ddd; border-radius: 6px; }
+  #empty { padding: 40px; text-align: center; color: #888; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Vatu — Revue de "Lire avec l'IA" (point #21)</h1>
+  <div>
+    <button id="btn-stats">Statistiques</button>
+    <button id="btn-toggle-all">Voir tout (y compris déjà vérifié)</button>
+  </div>
+</header>
+
+<div id="stats-panel"></div>
+<div id="list"><div id="empty">Chargement...</div></div>
+
+<script>
+(function () {
+  let secret = sessionStorage.getItem("vatu_admin_secret") || "";
+  let showAll = false;
+
+  function ensureSecret() {
+    while (!secret) {
+      secret = window.prompt("Code d'accès admin :") || "";
+    }
+    sessionStorage.setItem("vatu_admin_secret", secret);
+  }
+
+  async function api(path, options = {}) {
+    ensureSecret();
+    const res = await fetch(path, {
+      ...options,
+      headers: { ...(options.headers || {}), "X-Admin-Secret": secret, "Content-Type": "application/json" }
+    });
+    if (res.status === 401) {
+      sessionStorage.removeItem("vatu_admin_secret");
+      secret = "";
+      alert("Code invalide, réessayez.");
+      return api(path, options);
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || ("Erreur " + res.status));
+    }
+    return res.json();
+  }
+
+  function fieldRow(label, value, current, onPick) {
+    const row = document.createElement("div");
+    row.className = "field-row";
+    row.innerHTML =
+      '<div class="label">' + label + '</div>' +
+      '<div class="value">' + (value == null ? "<em>null</em>" : escapeHtml(String(value))) + '</div>' +
+      '<div class="choice"></div>';
+    const choice = row.querySelector(".choice");
+    const yes = document.createElement("button");
+    yes.textContent = "Correct";
+    const no = document.createElement("button");
+    no.textContent = "Faux";
+    function refresh() {
+      yes.className = current.value === true ? "active-yes" : "";
+      no.className = current.value === false ? "active-no" : "";
+    }
+    yes.onclick = () => { current.value = true; refresh(); onPick(); };
+    no.onclick = () => { current.value = false; refresh(); onPick(); };
+    refresh();
+    choice.appendChild(yes);
+    choice.appendChild(no);
+    return row;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function renderCard(item) {
+    const card = document.createElement("div");
+    card.className = "card" + (item.verification ? " verified" : "");
+
+    const left = document.createElement("div");
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML =
+      "<strong>" + escapeHtml(item.companyName || item.mandantEcb) + "</strong> · " +
+      escapeHtml(item.category || "?") + "<br/>" +
+      escapeHtml(item.title || "");
+    left.appendChild(meta);
+
+    const state = {
+      montant: { value: item.verification ? item.verification.montantCorrect : null },
+      date: { value: item.verification ? item.verification.dateCorrect : null },
+      reference: { value: item.verification ? item.verification.referenceCorrect : null }
+    };
+
+    left.appendChild(fieldRow("Montant", item.extraction.montant, state.montant, () => {}));
+    left.appendChild(fieldRow("Échéance", item.extraction.dateEcheance, state.date, () => {}));
+    left.appendChild(fieldRow("Référence", item.extraction.reference, state.reference, () => {}));
+
+    const accrocheRow = document.createElement("div");
+    accrocheRow.className = "field-row";
+    accrocheRow.innerHTML = '<div class="label">Accroche</div><div class="value">' + escapeHtml(item.extraction.accroche || "") + "</div>";
+    left.appendChild(accrocheRow);
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "save-btn";
+    saveBtn.textContent = item.verification ? "Mettre à jour" : "Enregistrer la vérification";
+    saveBtn.onclick = async () => {
+      try {
+        await api("/api/admin/extraction-review/" + item.id + "/verify", {
+          method: "POST",
+          body: JSON.stringify({
+            montantCorrect: state.montant.value,
+            dateCorrect: state.date.value,
+            referenceCorrect: state.reference.value,
+            verifiedBy: "Mohamed"
+          })
+        });
+        card.classList.add("verified");
+        saveBtn.textContent = "Enregistré ✓";
+      } catch (err) {
+        alert("Erreur: " + err.message);
+      }
+    };
+    left.appendChild(saveBtn);
+
+    const right = document.createElement("div");
+    const iframe = document.createElement("iframe");
+    iframe.src = "/api/admin/extraction-review/" + item.id + "/document?secret=" + encodeURIComponent(secret);
+    right.appendChild(iframe);
+
+    card.appendChild(left);
+    card.appendChild(right);
+    return card;
+  }
+
+  async function loadList() {
+    const listEl = document.getElementById("list");
+    listEl.innerHTML = '<div id="empty">Chargement...</div>';
+    try {
+      const data = await api("/api/admin/extraction-review?limit=50" + (showAll ? "&all=true" : ""));
+      if (!data.items.length) {
+        listEl.innerHTML = '<div id="empty">Aucune extraction ' + (showAll ? "" : "en attente de vérification") + ".</div>";
+        return;
+      }
+      listEl.innerHTML = "";
+      data.items.forEach((item) => listEl.appendChild(renderCard(item)));
+    } catch (err) {
+      listEl.innerHTML = '<div id="empty">Erreur : ' + escapeHtml(err.message) + "</div>";
+    }
+  }
+
+  async function loadStats() {
+    const panel = document.getElementById("stats-panel");
+    try {
+      const data = await api("/api/admin/extraction-review/stats");
+      let html = "<table><thead><tr><th>Catégorie</th><th>Vérifiées</th><th>Montant</th><th>Échéance</th><th>Référence</th></tr></thead><tbody>";
+      data.items.forEach((row) => {
+        html +=
+          "<tr><td>" + escapeHtml(row.category || "?") + "</td><td>" + row.verifiedCount + "</td>" +
+          "<td>" + (row.montant.accuracyPercent == null ? "-" : row.montant.accuracyPercent + "% (" + row.montant.correct + "/" + (row.montant.correct + row.montant.incorrect) + ")") + "</td>" +
+          "<td>" + (row.dateEcheance.accuracyPercent == null ? "-" : row.dateEcheance.accuracyPercent + "% (" + row.dateEcheance.correct + "/" + (row.dateEcheance.correct + row.dateEcheance.incorrect) + ")") + "</td>" +
+          "<td>" + (row.reference.accuracyPercent == null ? "-" : row.reference.accuracyPercent + "% (" + row.reference.correct + "/" + (row.reference.correct + row.reference.incorrect) + ")") + "</td></tr>";
+      });
+      html += "</tbody></table>";
+      panel.innerHTML = html;
+      panel.style.display = panel.style.display === "block" ? "none" : "block";
+    } catch (err) {
+      panel.innerHTML = "Erreur : " + escapeHtml(err.message);
+      panel.style.display = "block";
+    }
+  }
+
+  document.getElementById("btn-stats").onclick = loadStats;
+  document.getElementById("btn-toggle-all").onclick = () => {
+    showAll = !showAll;
+    document.getElementById("btn-toggle-all").textContent = showAll ? "Voir seulement en attente" : "Voir tout (y compris déjà vérifié)";
+    loadList();
+  };
+
+  loadList();
+})();
+</script>
+</body>
+</html>

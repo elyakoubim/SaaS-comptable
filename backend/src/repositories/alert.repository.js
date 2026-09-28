@@ -351,6 +351,129 @@ async function listAlertsSince(cabinetId, since) {
   return result.rows;
 }
 
+/**
+ * Alerte par id, sans verification de cabinet - reserve a l'outil interne de
+ * revue de la precision de "Lire avec l'IA" (point #21, cf. admin.routes.js),
+ * qui doit pouvoir relire le document de n'importe quel cabinet pour
+ * echantillonner des extractions reelles. Jamais expose aux comptables.
+ */
+async function getAlertForAdmin(alertId) {
+  if (!alertId) {
+    throw new Error("alertId is required");
+  }
+
+  const query = `
+    SELECT a.id, a.mandant_ecb, a.document_fps_id, a.category
+    FROM alerts a
+    WHERE a.id = $1::uuid
+    LIMIT 1
+  `;
+
+  const result = await db.query(query, [alertId]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Extractions deja faites, pretes a etre verifiees a la main (point #21).
+ * `onlyUnverified` (par defaut) exclut celles deja revues, pour ne pas
+ * repasser sur le meme echantillon a chaque ouverture de l'outil.
+ */
+async function listExtractionsForReview({ limit = 50, onlyUnverified = true } = {}) {
+  const condition = onlyUnverified ? "AND a.extraction_verified_at IS NULL" : "";
+
+  const query = `
+    SELECT
+      a.id,
+      a.mandant_ecb,
+      a.category,
+      a.titre,
+      a.document_fps_id,
+      a.extracted_montant,
+      a.extracted_date_echeance,
+      a.extracted_reference,
+      a.extracted_accroche,
+      a.extracted_at,
+      a.extraction_verified_at,
+      a.extraction_montant_correct,
+      a.extraction_date_correct,
+      a.extraction_reference_correct,
+      a.extraction_verified_by,
+      m.company_name
+    FROM alerts a
+    INNER JOIN mandants m ON m.ecb_number = a.mandant_ecb
+    WHERE a.extracted_at IS NOT NULL
+    ${condition}
+    ORDER BY a.extracted_at DESC
+    LIMIT $1
+  `;
+
+  const result = await db.query(query, [limit]);
+  return result.rows;
+}
+
+/**
+ * Enregistre le verdict humain sur une extraction (point #21) - un booleen
+ * par champ, jamais un verdict global : le montant peut etre juste alors que
+ * la date est fausse, et melanger les deux masquerait quel champ doit etre
+ * ameliore dans le prompt.
+ */
+async function saveExtractionVerification(alertId, { montantCorrect, dateCorrect, referenceCorrect, verifiedBy }) {
+  const query = `
+    UPDATE alerts
+    SET
+      extraction_montant_correct = $2,
+      extraction_date_correct = $3,
+      extraction_reference_correct = $4,
+      extraction_verified_at = NOW(),
+      extraction_verified_by = $5
+    WHERE id = $1::uuid
+    RETURNING
+      id,
+      extraction_montant_correct,
+      extraction_date_correct,
+      extraction_reference_correct,
+      extraction_verified_at,
+      extraction_verified_by
+  `;
+
+  const result = await db.query(query, [
+    alertId,
+    montantCorrect === undefined ? null : montantCorrect,
+    dateCorrect === undefined ? null : dateCorrect,
+    referenceCorrect === undefined ? null : referenceCorrect,
+    verifiedBy || null
+  ]);
+
+  return result.rows[0] || null;
+}
+
+/**
+ * Taux d'exactitude par champ, regroupe par categorie de document (point
+ * #21) - permet de voir si un type de document precis pose probleme (ex: le
+ * montant mal extrait uniquement sur les avis de paiement) plutot qu'un seul
+ * chiffre global qui noierait le signal.
+ */
+async function getExtractionAccuracyStats() {
+  const query = `
+    SELECT
+      category,
+      COUNT(*) FILTER (WHERE extraction_verified_at IS NOT NULL) AS verified_count,
+      COUNT(*) FILTER (WHERE extraction_montant_correct = true) AS montant_correct,
+      COUNT(*) FILTER (WHERE extraction_montant_correct = false) AS montant_incorrect,
+      COUNT(*) FILTER (WHERE extraction_date_correct = true) AS date_correct,
+      COUNT(*) FILTER (WHERE extraction_date_correct = false) AS date_incorrect,
+      COUNT(*) FILTER (WHERE extraction_reference_correct = true) AS reference_correct,
+      COUNT(*) FILTER (WHERE extraction_reference_correct = false) AS reference_incorrect
+    FROM alerts
+    WHERE extracted_at IS NOT NULL
+    GROUP BY category
+    ORDER BY category
+  `;
+
+  const result = await db.query(query);
+  return result.rows;
+}
+
 export {
   createAlert,
   existsForDocument,
@@ -360,5 +483,9 @@ export {
   acknowledgeAlert,
   countActiveByAccountant,
   getPortfolioSummary,
-  listAlertsSince
+  listAlertsSince,
+  getAlertForAdmin,
+  listExtractionsForReview,
+  saveExtractionVerification,
+  getExtractionAccuracyStats
 };

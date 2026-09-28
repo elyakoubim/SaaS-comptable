@@ -267,3 +267,17 @@ ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_key TEXT;
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_type TEXT;
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_extension TEXT;
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_archived_at TIMESTAMPTZ;
+
+-- Verification manuelle de la precision de "Lire avec l'IA" (28/09/2026,
+-- point #21) : avant de facturer une fonctionnalite qui extrait montant/
+-- echeance/reference via l'IA, on mesure sa fiabilite sur un echantillon reel
+-- plutot que de supposer qu'elle est correcte. Chaque champ est verifie
+-- separement (le montant peut etre juste alors que la date est fausse) via un
+-- outil interne (cf. admin.routes.js, jamais expose aux cabinets clients).
+-- NULL tant qu'aucune verification n'a ete faite ; extraction_verified_at
+-- sert de marqueur "deja revu", independant du resultat.
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_verified_at TIMESTAMPTZ;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_montant_correct BOOLEAN;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_date_correct BOOLEAN;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_reference_correct BOOLEAN;
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_verified_by TEXT;
