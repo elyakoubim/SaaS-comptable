@@ -187,6 +187,54 @@ async function updateLastSyncAt(ecbNumber, at = new Date()) {
   await db.query(query, [ecbNumber, at.toISOString()]);
 }
 
+/**
+ * Suppression d'un seul dossier par son cabinet (fonctionnalite demandee le
+ * 28/09/2026) : un cabinet qui n'est plus mandataire d'un client doit
+ * pouvoir faire disparaitre ce dossier de Vatu, sans attendre une
+ * suppression de compte complete (accountDeletion.repository.js, qui
+ * supprime tout le cabinet).
+ *
+ * Meme ordre de cascade que deleteCabinetCascade (contraintes de cle
+ * etrangere : les tables qui referencent mandant_ecb d'abord, puis
+ * mandants), mais borne a un seul ecb_number au lieu de tous ceux du cabinet.
+ *
+ * L'appartenance (cabinetId) est revérifiée ICI, dans le WHERE de la
+ * requete finale (ecb_number AND cabinet_id), plutot que de faire confiance
+ * au seul appelant : une tentative de suppression d'un dossier appartenant
+ * a un autre cabinet ne supprime rien (rowCount 0, la fonction renvoie
+ * false) meme si un appelant futur oubliait de verifier l'appartenance
+ * avant d'appeler cette fonction.
+ */
+async function deleteMandant(ecbNumber, cabinetId) {
+  if (!ecbNumber || !cabinetId) {
+    throw new Error("ecbNumber et cabinetId sont requis");
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+
+    await client.query(`DELETE FROM alerts WHERE mandant_ecb = $1`, [ecbNumber]);
+    await client.query(`DELETE FROM sync_runs WHERE mandant_ecb = $1`, [ecbNumber]);
+    await client.query(`DELETE FROM token_events WHERE mandant_ecb = $1`, [ecbNumber]);
+    await client.query(`DELETE FROM vat_period_aggregates WHERE mandant_ecb = $1`, [ecbNumber]);
+    await client.query(`DELETE FROM documents WHERE mandant_ecb = $1`, [ecbNumber]);
+
+    const result = await client.query(
+      `DELETE FROM mandants WHERE ecb_number = $1 AND cabinet_id = $2::uuid`,
+      [ecbNumber, cabinetId]
+    );
+
+    await client.query("COMMIT");
+    return result.rowCount > 0;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export {
   upsertMandantTokens,
   findMandantByEcb,
@@ -194,5 +242,6 @@ export {
   listRefreshCandidates,
   listSyncCandidates,
   updateLastSyncAt,
-  updateMandantStatus
+  updateMandantStatus,
+  deleteMandant
 };

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { buildAuthorizationUrl, exchangeAuthorizationCode } from "../services/fpsAuth.service.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { findMandantByEcb, listMandantsSummary } from "../repositories/mandant.repository.js";
+import { findMandantByEcb, listMandantsSummary, deleteMandant } from "../repositories/mandant.repository.js";
 
 const fpsRouter = Router();
 
@@ -85,6 +85,49 @@ fpsRouter.post("/tokens/refresh", requireAuth, async (req, res) => {
 
     await enqueueBulkRefresh();
     return res.status(202).json({ message: "Refresh job enqueued", scope: "all" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * Suppression d'un dossier par son cabinet (fonctionnalite demandee le
+ * 28/09/2026) : pour l'usage ou un cabinet n'est plus mandataire d'un client
+ * et veut faire disparaitre ce dossier de Vatu. Irreversible, donc deux
+ * garde-fous independants :
+ *  - cote frontend, une confirmation (voir DashboardPage.jsx) empeche un
+ *    misclic ;
+ *  - cote backend, `confirmEcbNumber` doit reproduire exactement le numero
+ *    BCE du dossier vise, pour qu'un appel DELETE declenche par erreur (bug
+ *    frontend, requete rejouee) sans ce corps precis echoue plutot que de
+ *    supprimer silencieusement.
+ * L'appartenance au cabinet authentifie est aussi revérifiée dans
+ * deleteMandant() elle-meme (WHERE ecb_number AND cabinet_id), pas
+ * seulement ici.
+ */
+fpsRouter.delete("/mandants/:ecbNumber", requireAuth, async (req, res) => {
+  try {
+    const ecbNumber = String(req.params.ecbNumber || "");
+    if (!/^\d{10}$/.test(ecbNumber)) {
+      return res.status(400).json({ message: "ecbNumber must contain exactly 10 digits" });
+    }
+
+    const mandant = await findMandantByEcb(ecbNumber);
+    if (!mandant || mandant.cabinet_id !== req.auth.cabinetId) {
+      return res.status(404).json({ message: "Mandant not found for authenticated accountant" });
+    }
+
+    const confirmEcbNumber = String((req.body || {}).confirmEcbNumber || "");
+    if (confirmEcbNumber !== ecbNumber) {
+      return res.status(400).json({ message: "Confirmation invalide : le numero BCE ne correspond pas" });
+    }
+
+    const deleted = await deleteMandant(ecbNumber, req.auth.cabinetId);
+    if (!deleted) {
+      return res.status(404).json({ message: "Mandant not found for authenticated accountant" });
+    }
+
+    return res.status(204).send();
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

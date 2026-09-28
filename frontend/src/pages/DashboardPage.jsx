@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchMandants, fetchPortfolio, forceSync } from "../api";
+import { fetchMandants, fetchPortfolio, forceSync, deleteMandant } from "../api";
 
 // Les onze categories metier du classificateur (documentClassifier.service.js,
 // cote backend). Duplique ici en toute connaissance de cause : le front n'a
@@ -88,6 +88,19 @@ function DashboardPage() {
   const [syncFeedback, setSyncFeedback] = useState({});
   // Force un recalcul du compte à rebours sans refaire d'appel réseau.
   const [, setTick] = useState(0);
+
+  // Suppression d'un dossier (point demande le 28/09/2026) : `deleteTarget`
+  // porte le mandant vise pendant toute la confirmation, `deleteConfirmText`
+  // le texte tape par l'utilisateur. Le controle avant suppression demande
+  // par l'utilisateur ("il devra faire tres attention de ne pas se tromper")
+  // est implemente en exigeant que ce texte reproduise exactement le numero
+  // BCE du dossier avant que le bouton de suppression ne devienne actif —
+  // un simple clic de confirmation se rate trop facilement, retaper le
+  // numero force a le relire.
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const [portfolio, setPortfolio] = useState([]);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
@@ -206,6 +219,40 @@ function DashboardPage() {
       }));
     } finally {
       setSyncingEcb("");
+    }
+  }
+
+  function openDeleteModal(mandant) {
+    setDeleteTarget(mandant);
+    setDeleteConfirmText("");
+    setDeleteError("");
+  }
+
+  function closeDeleteModal() {
+    if (deleting) {
+      return;
+    }
+    setDeleteTarget(null);
+    setDeleteConfirmText("");
+    setDeleteError("");
+  }
+
+  async function handleDeleteMandant() {
+    if (!deleteTarget || deleteConfirmText !== deleteTarget.ecbNumber) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setDeleteError("");
+      await deleteMandant(deleteTarget.ecbNumber, deleteConfirmText);
+      setDeleteTarget(null);
+      setDeleteConfirmText("");
+      await load();
+    } catch (err) {
+      setDeleteError(err.message || "Suppression impossible");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -476,6 +523,16 @@ function DashboardPage() {
                     )}
                   </div>
                 )}
+
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <button
+                    className="text-xs font-medium text-gray-400 transition hover:text-danger"
+                    onClick={() => openDeleteModal(mandant)}
+                    type="button"
+                  >
+                    Supprimer ce dossier
+                  </button>
+                </div>
               </article>
             );
           })}
@@ -487,6 +544,67 @@ function DashboardPage() {
           n'a encore jamais été synchronisé.
         </p>
       </article>
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeDeleteModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-floating"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="font-display text-lg font-semibold text-danger">Supprimer ce dossier ?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Cette action est <strong>définitive</strong> : les documents, alertes et l'historique
+              de synchronisation de{" "}
+              <strong>{deleteTarget.companyName || "ce dossier"}</strong> (BCE {deleteTarget.ecbNumber})
+              seront supprimés de Vatu. Utilisez ceci uniquement si vous n'êtes plus mandataire de ce
+              client.
+            </p>
+            <p className="mt-3 text-sm text-gray-700">
+              Pour confirmer, tapez le numéro BCE <strong>{deleteTarget.ecbNumber}</strong> ci-dessous :
+            </p>
+            <input
+              autoFocus
+              className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
+              onChange={(event) => setDeleteConfirmText(event.target.value)}
+              placeholder={deleteTarget.ecbNumber}
+              type="text"
+              value={deleteConfirmText}
+            />
+
+            {deleteError && (
+              <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-danger">
+                {deleteError}
+              </p>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                className="rounded-lg border border-line bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                disabled={deleting}
+                onClick={closeDeleteModal}
+                type="button"
+              >
+                Annuler
+              </button>
+              <button
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  deleteConfirmText === deleteTarget.ecbNumber && !deleting
+                    ? "bg-danger text-white shadow-soft hover:opacity-90"
+                    : "cursor-not-allowed border border-line bg-gray-50 text-gray-400"
+                }`}
+                disabled={deleteConfirmText !== deleteTarget.ecbNumber || deleting}
+                onClick={handleDeleteMandant}
+                type="button"
+              >
+                {deleting ? "Suppression…" : "Supprimer définitivement"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

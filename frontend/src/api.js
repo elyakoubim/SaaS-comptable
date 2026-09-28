@@ -385,7 +385,28 @@ async function inviteCabinetMember(email) {
   return data;
 }
 
-export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, changeSubscriptionPlan, createPortalSession };
+/**
+ * Suppression irreversible d'un dossier (point demande le 28/09/2026) :
+ * `confirmEcbNumber` doit reproduire exactement le numero BCE du dossier
+ * vise (le backend le revérifie, cf. fps.routes.js) — deuxieme garde-fou
+ * derriere la confirmation deja faite cote UI dans DashboardPage.jsx.
+ */
+async function deleteMandant(ecbNumber, confirmEcbNumber) {
+  const response = await fetch(apiUrl(`/api/fps/mandants/${ecbNumber}`), {
+    method: "DELETE",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ confirmEcbNumber })
+  });
+
+  if (response.status === 204) {
+    return {};
+  }
+
+  const data = await response.json().catch(() => ({}));
+  throw new Error(data.message || "Suppression impossible");
+}
+
+export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, changeSubscriptionPlan, createPortalSession, deleteMandant };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
 export { requestPasswordReset, resetPassword };
 export { verifyEmail, resendVerificationEmail };
