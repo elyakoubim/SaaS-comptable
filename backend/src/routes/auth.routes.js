@@ -8,7 +8,8 @@ import {
   forgotPasswordRateLimiter,
   resetPasswordRateLimiter,
   resendVerificationRateLimiter,
-  verifyEmailRateLimiter
+  verifyEmailRateLimiter,
+  deleteAccountRateLimiter
 } from "../middleware/rateLimit.middleware.js";
 import {
   createAccountant,
@@ -19,6 +20,7 @@ import {
 } from "../repositories/accountant.repository.js";
 import {
   createCabinet,
+  findCabinetById,
   findInvitationByToken,
   markInvitationAccepted
 } from "../repositories/cabinet.repository.js";
@@ -34,11 +36,13 @@ import {
   markEmailVerificationTokenUsed,
   invalidatePendingEmailVerificationTokens
 } from "../repositories/emailVerification.repository.js";
+import { deleteCabinetCascade, deleteMemberAccount } from "../repositories/accountDeletion.repository.js";
 import {
   sendPasswordResetEmail,
   sendVerificationEmail,
   NotificationUnavailableError
 } from "../services/notification.service.js";
+import { cancelSubscriptionImmediately } from "../services/billing.service.js";
 import { hashPassword, signSessionToken, verifyPassword } from "../utils/authCrypto.js";
 
 const authRouter = Router();
@@ -343,6 +347,55 @@ authRouter.post("/resend-verification", requireAuth, resendVerificationRateLimit
     return res.json({ message: "Un nouvel email de confirmation vient d'etre envoye." });
   } catch (error) {
     return res.status(500).json({ message: toAuthErrorMessage(error, "Resend verification failed") });
+  }
+});
+
+// Suppression de compte RGPD (28/09/2026, decision produit). Confirmation par
+// mot de passe (pas de champ "tapez SUPPRIMER") : deja un facteur different
+// du bouton lui-meme, coherent avec le reste de l'auth (reset, resend). Owner
+// -> tout le cabinet disparait (mandats, documents, alertes, abonnement
+// Stripe annule) ; membre -> seule sa ligne compte disparait, le cabinet et
+// ses mandats restent intacts pour le reste de l'equipe.
+authRouter.post("/delete-account", requireAuth, deleteAccountRateLimiter, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password) {
+      return res.status(400).json({ message: "password is required" });
+    }
+
+    const accountant = await findAccountantById(req.auth.accountantId);
+    if (!accountant) {
+      return res.status(404).json({ message: "Compte introuvable" });
+    }
+
+    const isValidPassword = await verifyPassword(String(password), accountant.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: "Mot de passe incorrect" });
+    }
+
+    if (accountant.role === "owner") {
+      const cabinet = await findCabinetById(accountant.cabinet_id);
+      if (cabinet?.stripe_subscription_id) {
+        try {
+          await cancelSubscriptionImmediately(cabinet);
+        } catch (stripeError) {
+          // On ne bloque pas la suppression pour un souci Stripe (ex: abonnement
+          // deja annule cote Stripe) - la personne veut ses donnees supprimees,
+          // pas se retrouver coincee par un appel API tiers qui echoue.
+          console.warn("Stripe cancellation warning during account deletion:", stripeError.message || stripeError);
+        }
+      }
+      await deleteCabinetCascade(accountant.cabinet_id);
+    } else {
+      await deleteMemberAccount(accountant.id);
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    if (error.code === "MANDANT_OWNER") {
+      return res.status(409).json({ message: error.message });
+    }
+    return res.status(500).json({ message: toAuthErrorMessage(error, "Account deletion failed") });
   }
 });
 

@@ -124,6 +124,22 @@ async function resendVerificationEmail() {
   return data;
 }
 
+async function deleteAccount(password) {
+  const response = await fetch(apiUrl("/api/auth/delete-account"), {
+    method: "POST",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ password })
+  });
+
+  if (response.status === 204) {
+    clearAuthToken();
+    return {};
+  }
+
+  const data = await response.json().catch(() => ({}));
+  throw new Error(data.message || "Suppression impossible");
+}
+
 async function fetchCurrentUser() {
   const response = await fetch(apiUrl("/api/auth/me"), {
     headers: withAuthHeaders()
@@ -373,4 +389,5 @@ export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowl
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
 export { requestPasswordReset, resetPassword };
 export { verifyEmail, resendVerificationEmail };
+export { deleteAccount };
 export { fetchCabinetMembers, inviteCabinetMember };

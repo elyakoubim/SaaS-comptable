@@ -348,6 +348,12 @@ export default function App() {
     setCurrentUser(null);
   }
 
+  // deleteAccount() a deja efface le token cote client (voir api.js) ; il ne
+  // reste qu'a vider l'etat local pour retomber sur /login, comme un logout.
+  function handleAccountDeleted() {
+    setCurrentUser(null);
+  }
+
   if (isCheckingSession) {
     return (
       <AppShell currentUser={null} isAuthenticated={false} onLogout={handleLogout}>
@@ -478,7 +484,13 @@ export default function App() {
           />
           <Route
             path="/team"
-            element={isAuthenticated ? <TeamPage currentUser={currentUser} /> : <Navigate replace to="/login" />}
+            element={
+              isAuthenticated ? (
+                <TeamPage currentUser={currentUser} onAccountDeleted={handleAccountDeleted} />
+              ) : (
+                <Navigate replace to="/login" />
+              )
+            }
           />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="*" element={<Navigate replace to={isAuthenticated ? "/" : "/login"} />} />

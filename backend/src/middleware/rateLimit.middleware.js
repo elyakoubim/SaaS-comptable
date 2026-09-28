@@ -95,11 +95,24 @@ const verifyEmailRateLimiter = buildAuthRateLimiter({
   }
 });
 
+const deleteAccountRateLimiter = buildAuthRateLimiter({
+  prefix: "auth_rl_delete_account:",
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  messages: {
+    fr: "Trop de tentatives. Reessayez dans une heure.",
+    nl: "Te veel pogingen. Probeer het over een uur opnieuw.",
+    de: "Zu viele Versuche. Bitte versuchen Sie es in einer Stunde erneut.",
+    en: "Too many attempts. Try again in one hour."
+  }
+});
+
 export {
   loginRateLimiter,
   registerRateLimiter,
   forgotPasswordRateLimiter,
   resetPasswordRateLimiter,
   resendVerificationRateLimiter,
-  verifyEmailRateLimiter
+  verifyEmailRateLimiter,
+  deleteAccountRateLimiter
 };

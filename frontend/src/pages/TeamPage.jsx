@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchCabinetMembers, inviteCabinetMember } from "../api";
+import { fetchCabinetMembers, inviteCabinetMember, deleteAccount } from "../api";
 
 const ROLE_LABELS = {
   owner: "Titulaire",
@@ -16,7 +16,7 @@ function formatDate(value) {
  * "tout le monde voit tout" sur les dossiers), seul le owner peut inviter
  * (décision multi-utilisateurs du 24/09/2026).
  */
-function TeamPage({ currentUser }) {
+function TeamPage({ currentUser, onAccountDeleted }) {
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -25,6 +25,10 @@ function TeamPage({ currentUser }) {
   const [inviteError, setInviteError] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
+  const [showDeleteForm, setShowDeleteForm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const isOwner = currentUser?.role === "owner";
   // Vatu Connect est un abonnement a un seul utilisateur : l'invitation est
@@ -84,6 +88,20 @@ function TeamPage({ currentUser }) {
       setCopied(true);
     } catch {
       setCopied(false);
+    }
+  }
+
+  async function onDeleteSubmit(event) {
+    event.preventDefault();
+    try {
+      setIsDeleting(true);
+      setDeleteError("");
+      await deleteAccount(deletePassword);
+      onAccountDeleted?.();
+    } catch (error) {
+      setDeleteError(error.message || "Suppression impossible");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -183,6 +201,63 @@ function TeamPage({ currentUser }) {
           )}
         </article>
       )}
+
+      <article className="rounded-2xl border border-red-200 bg-red-50/40 p-6 shadow-floating">
+        <h2 className="mb-1 text-sm font-semibold text-danger">Zone dangereuse</h2>
+        <p className="mb-3 text-sm text-gray-600">
+          {isOwner
+            ? "Supprime definitivement votre compte ET tout le cabinet : mandats, documents, alertes et abonnement. Action irreversible pour toute l'equipe."
+            : "Supprime definitivement votre compte. Les mandats et alertes du cabinet restent accessibles au reste de l'equipe."}
+        </p>
+
+        {!showDeleteForm && (
+          <button
+            className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-semibold text-danger shadow-soft transition hover:bg-red-50"
+            onClick={() => setShowDeleteForm(true)}
+            type="button"
+          >
+            Supprimer mon compte
+          </button>
+        )}
+
+        {showDeleteForm && (
+          <form className="flex flex-col gap-2 sm:flex-row" onSubmit={onDeleteSubmit}>
+            <input
+              autoComplete="current-password"
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-danger sm:flex-1"
+              placeholder="Confirmez avec votre mot de passe"
+              type="password"
+              value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+            />
+            <button
+              className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:opacity-90 disabled:opacity-70"
+              disabled={isDeleting || !deletePassword}
+              type="submit"
+            >
+              {isDeleting ? "Suppression..." : "Confirmer la suppression"}
+            </button>
+            <button
+              className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-muted shadow-soft transition hover:bg-gray-50"
+              disabled={isDeleting}
+              onClick={() => {
+                setShowDeleteForm(false);
+                setDeletePassword("");
+                setDeleteError("");
+              }}
+              type="button"
+            >
+              Annuler
+            </button>
+          </form>
+        )}
+
+        {deleteError && (
+          <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">
+            {deleteError}
+          </p>
+        )}
+      </article>
     </section>
   );
 }

@@ -85,6 +85,17 @@ async function changeSubscriptionPlan(cabinet, { plan, interval }) {
   return updateSubscriptionState(String(updated.customer), state);
 }
 
+// Annulation immediate (pas cancel_at_period_end) : utilisee uniquement pour
+// la suppression de compte RGPD (cf. auth.routes.js) - le cabinet disparait
+// de la base dans la foulee, un abonnement qui continuerait jusqu'a la fin de
+// periode facturerait un client qui n'a plus de compte pour en profiter.
+async function cancelSubscriptionImmediately(cabinet) {
+  if (!cabinet.stripe_subscription_id) {
+    return null;
+  }
+  return stripe.subscriptions.cancel(cabinet.stripe_subscription_id);
+}
+
 // Cree une session du Customer Portal Stripe (gestion/annulation en self-service).
 async function createPortalSession(cabinet, { ownerEmail, ownerFullName }) {
   const customerId = await ensureStripeCustomer(cabinet, ownerEmail, ownerFullName);
@@ -192,6 +203,7 @@ export {
   createCheckoutSession,
   changeSubscriptionPlan,
   createPortalSession,
+  cancelSubscriptionImmediately,
   processWebhookEvent,
   hasProAccess
 };
