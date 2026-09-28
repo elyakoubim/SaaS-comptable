@@ -3,6 +3,11 @@ import {
   setStripeCustomerId,
   updateSubscriptionState
 } from "../repositories/cabinet.repository.js";
+import {
+  hasEmailUsedTrial,
+  hasFingerprintUsedTrial,
+  recordTrialUsage
+} from "../repositories/trialUsage.repository.js";
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || "http://localhost:5173";
@@ -30,22 +35,36 @@ async function ensureStripeCustomer(cabinet, ownerEmail, ownerFullName) {
 // Cree une Checkout Session en mode abonnement avec essai de 14 jours et
 // collecte obligatoire de la carte (debit automatique a la fin de l'essai,
 // sauf annulation - cf. decision produit du 24/09/2026).
+//
+// Anti-abus (28/09/2026) : l'essai n'est accorde que si cet email n'en a
+// jamais eu un (trial_usage, cf. schema.sql). Cote carte, rien n'est verifie
+// ici - Stripe Checkout ne connait pas encore le moyen de paiement au moment
+// de creer la session, seulement une fois que la personne l'a saisi. Ce
+// second controle (meme carte, email different) se fait donc plus loin, dans
+// le webhook checkout.session.completed, qui peut couper l'essai en cours de
+// route si la carte a deja servi.
 async function createCheckoutSession(cabinet, { plan, interval, ownerEmail, ownerFullName }) {
   const priceId = resolvePriceId(plan, interval);
   const customerId = await ensureStripeCustomer(cabinet, ownerEmail, ownerFullName);
+
+  const alreadyTrialed = await hasEmailUsedTrial(ownerEmail);
+
+  const subscriptionData = {
+    metadata: { cabinetId: cabinet.id, plan }
+  };
+  if (!alreadyTrialed) {
+    subscriptionData.trial_period_days = 14;
+    subscriptionData.trial_settings = {
+      end_behavior: { missing_payment_method: "cancel" }
+    };
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     payment_method_collection: "always",
-    subscription_data: {
-      trial_period_days: 14,
-      trial_settings: {
-        end_behavior: { missing_payment_method: "cancel" }
-      },
-      metadata: { cabinetId: cabinet.id, plan }
-    },
+    subscription_data: subscriptionData,
     allow_promotion_codes: true,
     success_url: `${frontendUrl()}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${frontendUrl()}/billing/cancelled`
@@ -161,7 +180,32 @@ async function processWebhookEvent(event) {
       // plutot que de faire confiance au payload partiel de la session.
       const session = event.data.object;
       if (session.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        let subscription = await stripe.subscriptions.retrieve(session.subscription, {
+          expand: ["default_payment_method"]
+        });
+        const customerId = String(subscription.customer);
+        const fingerprint = subscription.default_payment_method?.card?.fingerprint || null;
+
+        let email = null;
+        try {
+          const customer = await stripe.customers.retrieve(customerId);
+          email = customer?.email || null;
+        } catch (customerError) {
+          console.warn(`Impossible de recuperer l'email du client Stripe ${customerId}:`, customerError.message);
+        }
+
+        // Meme carte deja utilisee pour un essai (sous ce compte ou un autre,
+        // cf. trial_usage) : on coupe l'essai en cours de route, la
+        // facturation demarre immediatement au lieu des 14 jours prevus.
+        const fingerprintAlreadyUsed = fingerprint ? await hasFingerprintUsedTrial(fingerprint) : false;
+        if (subscription.status === "trialing" && fingerprintAlreadyUsed) {
+          subscription = await stripe.subscriptions.update(subscription.id, { trial_end: "now" });
+        }
+
+        if (email) {
+          await recordTrialUsage({ email, cardFingerprint: fingerprint, stripeCustomerId: customerId });
+        }
+
         await handleSubscriptionEvent(subscription);
       }
       break;

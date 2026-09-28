@@ -281,3 +281,23 @@ ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_montant_correct BOOLEAN;
 ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_date_correct BOOLEAN;
 ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_reference_correct BOOLEAN;
 ALTER TABLE alerts ADD COLUMN IF NOT EXISTS extraction_verified_by TEXT;
+
+-- Anti-abus de l'essai gratuit (28/09/2026) : jusqu'ici, `trial_period_days:
+-- 14` etait pose sans condition a chaque Checkout Stripe, donc un meme email
+-- ou une meme carte pouvait enchainer les essais gratuits indefiniment (un
+-- abonnement annule, puis un nouveau Checkout, redonnait 14 jours). Ce
+-- journal persiste independamment des cabinets (qui peuvent etre supprimes,
+-- RGPD oblige) : email et empreinte de carte y restent traces pour toujours,
+-- meme si le compte associe disparait. card_fingerprint est NULL tant que le
+-- webhook checkout.session.completed n'a pas encore tourne (la carte n'est
+-- connue qu'une fois le paiement saisi, pas a la creation de la session).
+CREATE TABLE IF NOT EXISTS trial_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  card_fingerprint TEXT,
+  stripe_customer_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trial_usage_email ON trial_usage (email);
+CREATE INDEX IF NOT EXISTS idx_trial_usage_fingerprint ON trial_usage (card_fingerprint);
