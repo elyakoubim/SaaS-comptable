@@ -1,6 +1,24 @@
 import "dotenv/config";
+import { Sentry, isSentryEnabled } from "../instrument.js";
 import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.js";
+
+// Meme filet de securite que server.js (process web) - ce fichier est un
+// process a part entiere (npm run worker), avec son propre cycle de vie.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+  if (isSentryEnabled) {
+    Sentry.captureException(reason);
+  }
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  if (isSentryEnabled) {
+    Sentry.captureException(error);
+  }
+  process.exit(1);
+});
 import {
   getValidAccessToken,
   refreshExpiredMandants,
@@ -97,6 +115,9 @@ worker.on("completed", (job) => {
 
 worker.on("failed", (job, err) => {
   console.error(`[worker] job failed: ${job?.id} (${job?.name}) -> ${err.message}`);
+  if (isSentryEnabled) {
+    Sentry.captureException(err, { tags: { queue: "fps-token-refresh", jobName: job?.name } });
+  }
 });
 
 await refreshQueue.upsertJobScheduler("hourly-token-refresh", {
@@ -308,6 +329,9 @@ documentSyncWorker.on("completed", (job) => {
 
 documentSyncWorker.on("failed", (job, err) => {
   console.error(`[doc-sync-worker] job failed: ${job?.id} (${job?.name}) -> ${err.message}`);
+  if (isSentryEnabled) {
+    Sentry.captureException(err, { tags: { queue: "fps-document-sync", jobName: job?.name } });
+  }
 });
 
 // Minute 20 : decale du rafraichissement des jetons (minute 0), pour ne pas
@@ -336,6 +360,9 @@ emailDigestWorker.on("completed", (job) => {
 
 emailDigestWorker.on("failed", (job, err) => {
   console.error(`[digest-worker] job failed: ${job?.id} -> ${err.message}`);
+  if (isSentryEnabled) {
+    Sentry.captureException(err, { tags: { queue: "email-digest" } });
+  }
 });
 
 // 7h00 Europe/Brussels (le fuseau gere automatiquement le passage heure

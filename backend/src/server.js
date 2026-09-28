@@ -1,4 +1,5 @@
 import "./config/env.js";
+import { Sentry, isSentryEnabled } from "./instrument.js";
 import { app } from "./app.js";
 import { authConfig } from "./config/auth.config.js";
 import { ensureDatabaseSchema, verifyDatabaseConnection } from "./config/db.js";
@@ -7,6 +8,24 @@ import { hashPassword } from "./utils/authCrypto.js";
 import { backfillAlertClassification } from "./migrations/backfillAlertClassification.js";
 
 const port = Number(process.env.PORT || 4000);
+
+// Filet de securite : sans ces deux handlers, une erreur non rattrapee dans un
+// callback async fait planter le process (ou pire, le laisse dans un etat
+// indefini) sans jamais remonter a Sentry.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+  if (isSentryEnabled) {
+    Sentry.captureException(reason);
+  }
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  if (isSentryEnabled) {
+    Sentry.captureException(error);
+  }
+  process.exit(1);
+});
 
 async function bootstrap() {
   try {
@@ -36,6 +55,9 @@ async function bootstrap() {
     }
   } catch (error) {
     console.warn("Database bootstrap warning:", error.message || error);
+    if (isSentryEnabled) {
+      Sentry.captureException(error);
+    }
   }
 
   app.listen(port, () => {

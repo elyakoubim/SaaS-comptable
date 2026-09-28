@@ -16,6 +16,7 @@ import { documentRouter } from "./routes/document.routes.js";
 import { fpsRouter } from "./routes/fps.routes.js";
 import { syncRouter } from "./routes/sync.routes.js";
 import { fpsConfig } from "./config/fps.config.js";
+import { Sentry, isSentryEnabled } from "./instrument.js";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -131,5 +132,20 @@ if (hasFrontendBuild) {
     return res.sendFile(resolve(frontendDistPath, "index.html"));
   });
 }
+
+// Filet de securite : chaque route existante attrape deja ses propres
+// erreurs (try/catch + res.status(500)), donc ceci ne devrait capturer que
+// l'imprevu (une erreur synchrone dans un middleware, une route oubliee).
+// Doit etre monte apres les routes mais avant tout autre gestionnaire
+// d'erreur (recommandation Sentry) - ici il n'y en a pas d'autre.
+if (isSentryEnabled) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
+// eslint-disable-next-line no-unused-vars
+app.use((error, _req, res, _next) => {
+  console.error("Unhandled Express error:", error.message || error);
+  res.status(500).json({ message: "Erreur interne" });
+});
 
 export { app };
