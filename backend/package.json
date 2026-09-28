@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "test": "node --test \"src/**/*.test.js\"",
     "worker": "node src/workers/scheduler.js",
     "auth:smoke": "node scripts/auth-smoke-test.mjs",
     "mmf:scenarios": "node scripts/mmf-scenarios.mjs",
