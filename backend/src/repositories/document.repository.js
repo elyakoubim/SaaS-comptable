@@ -73,7 +73,11 @@ async function findByFpsId(documentFpsId) {
       publish_date,
       metadata,
       first_seen_at,
-      last_seen_at
+      last_seen_at,
+      content_key,
+      content_type,
+      content_extension,
+      content_archived_at
     FROM documents
     WHERE document_fps_id = $1
     LIMIT 1
@@ -81,6 +85,22 @@ async function findByFpsId(documentFpsId) {
 
   const result = await db.query(query, [documentFpsId]);
   return result.rows[0] || null;
+}
+
+/**
+ * Enregistre la référence de l'objet archivé sur R2 après un premier
+ * téléchargement réussi (cf. objectStorage.service.js). L'archivage se fait
+ * à la demande, pas par un job de fond : inutile de retélécharger tout
+ * l'historique d'un coup, un document jamais consulté n'a pas besoin d'être
+ * dupliqué avant que quelqu'un ne le demande.
+ */
+async function saveDocumentContentRef(documentFpsId, { contentKey, contentType, contentExtension }) {
+  const query = `
+    UPDATE documents
+    SET content_key = $2, content_type = $3, content_extension = $4, content_archived_at = NOW()
+    WHERE document_fps_id = $1
+  `;
+  await db.query(query, [documentFpsId, contentKey, contentType || null, contentExtension || null]);
 }
 
 async function listByMandant(mandantEcb, { limit = 50, offset = 0, since } = {}) {
@@ -144,4 +164,4 @@ async function countByMandant(mandantEcb) {
   return result.rows[0]?.total || 0;
 }
 
-export { upsertDocument, findByFpsId, listByMandant, markAsSeen, countByMandant };
+export { upsertDocument, findByFpsId, listByMandant, markAsSeen, countByMandant, saveDocumentContentRef };

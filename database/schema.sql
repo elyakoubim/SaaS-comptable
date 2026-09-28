@@ -252,3 +252,18 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_accountant ON email_verification_tokens (accountant_id);
+
+-- Archivage des PDF sur Cloudflare R2 (28/09/2026, point #14) : le SPF
+-- supprime un document au bout de 60 jours glissants ; sans copie conservee,
+-- la fiche reste listee mais son telechargement echoue definitivement passe
+-- ce delai (cf. vatu/plan-v2.md, "l'archive est le vrai actif"). content_key
+-- pointe vers l'objet stocke sur R2 (S3-compatible, chiffre au repos par
+-- defaut, pas de frais de sortie) ; NULL tant que ce document n'a pas encore
+-- ete telecharge une premiere fois. L'archivage se fait a la demande, au
+-- premier telechargement (cf. document.routes.js) - pas par un job de fond
+-- qui retelechargerait tout l'historique d'un coup pour des documents que
+-- personne n'a jamais consultes.
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_key TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_type TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_extension TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS content_archived_at TIMESTAMPTZ;

@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { findByFpsId } from "../repositories/document.repository.js";
+import { findByFpsId, saveDocumentContentRef } from "../repositories/document.repository.js";
 import { findMandantByEcb } from "../repositories/mandant.repository.js";
 import { getValidAccessToken } from "../services/fpsAuth.service.js";
 import { downloadDocument } from "../services/myMinfinClient.service.js";
 import { ApiError, AuthError, RateLimitError } from "../services/myMinfinErrors.js";
+import { getObject, putObject, buildDocumentKey, isObjectStorageEnabled } from "../services/objectStorage.service.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -13,10 +14,14 @@ const documentRouter = Router();
 /**
  * Télécharge le contenu d'un document MyMinfin et le relaie au navigateur.
  *
- * Le PDF n'est pas stocké : il est récupéré à la demande avec le token du
- * mandant. La fenêtre MyMinfin étant de 60 jours glissants, un archivage
- * viendra plus tard — il suppose une décision de stockage (disque persistant
- * ou object storage) qui n'a pas à bloquer la consultation.
+ * Archivage (28/09/2026, point #14) : si R2 est configuré (cf.
+ * objectStorage.config.js — inerte sans identifiants, comme Sentry) et que ce
+ * document a déjà été archivé (`content_key`), on sert la copie R2 sans
+ * repasser par le SPF. C'est ce qui permet de continuer à servir un document
+ * au-delà de la fenêtre glissante de 60 jours de MyMinfin, qui elle échoue
+ * définitivement passé ce délai. Sinon (premier téléchargement, ou R2 non
+ * configuré), on va chercher le contenu chez le SPF comme avant, et — si R2
+ * est disponible — on en garde une copie pour la prochaine fois.
  *
  * Le propriétaire réel du document (`owner_type` / `owner_identifier`, issus de
  * `relatedTo`) est indispensable dès qu'il appartient à un mandant : sans lui
@@ -40,11 +45,41 @@ documentRouter.get("/:uuid/content", requireAuth, async (req, res) => {
       return res.status(404).json({ message: "Document introuvable" });
     }
 
+    if (isObjectStorageEnabled && document.content_key) {
+      const archived = await getObject(document.content_key);
+      if (archived) {
+        const fileName = document.content_extension ? `${uuid}.${document.content_extension}` : uuid;
+        const disposition = archived.contentType === "application/pdf" ? "inline" : "attachment";
+
+        res.setHeader("Content-Type", archived.contentType);
+        res.setHeader("Content-Disposition", `${disposition}; filename="${fileName}"`);
+        res.setHeader("Content-Length", String(archived.content.length));
+        res.setHeader("Cache-Control", "private, no-store");
+        return res.send(archived.content);
+      }
+      // content_key pointe vers un objet absent (supprimé manuellement dans
+      // le bucket, par exemple) : on retombe sur le SPF ci-dessous plutôt que
+      // d'échouer purement et simplement.
+    }
+
     const accessToken = await getValidAccessToken(document.mandant_ecb);
     const { content, contentType, extension } = await downloadDocument(accessToken, uuid, {
       ownerType: document.owner_type,
       ownerIdentifier: document.owner_identifier
     });
+
+    if (isObjectStorageEnabled) {
+      // L'archivage est un plus, pas une condition du téléchargement : si R2
+      // est indisponible ou en erreur, le comptable reçoit quand même son
+      // document, on retentera l'archivage à la prochaine consultation.
+      try {
+        const key = buildDocumentKey(document.mandant_ecb, uuid);
+        await putObject(key, content, contentType);
+        await saveDocumentContentRef(uuid, { contentKey: key, contentType, contentExtension: extension });
+      } catch (storageError) {
+        console.error(`[documents] archivage R2 échoué pour ${uuid}:`, storageError.message);
+      }
+    }
 
     // Le type est déduit des octets, pas de l'en-tête du SPF qui annonce
     // `application/octet-stream` pour tout. Un .docx servi en application/pdf
