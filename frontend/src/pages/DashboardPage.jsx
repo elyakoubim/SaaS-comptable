@@ -1,34 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchMandants, fetchPortfolio, forceSync, deleteMandant } from "../api";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 // Les onze categories metier du classificateur (documentClassifier.service.js,
 // cote backend). Duplique ici en toute connaissance de cause : le front n'a
 // pas de dependance vers le code backend, et cette liste ne change pas souvent.
-const PORTFOLIO_CATEGORIES = [
-  { value: "", label: "Toutes categories" },
-  { value: "recouvrement", label: "Recouvrement" },
-  { value: "sanction", label: "Sanction" },
-  { value: "paiement", label: "Paiement" },
-  { value: "controle", label: "Controle" },
-  { value: "declaration", label: "Declaration" },
-  { value: "attestation", label: "Attestation" },
-  { value: "accuse", label: "Accuse de reception" },
-  { value: "douane_accises", label: "Douane et accises" },
-  { value: "ubo", label: "UBO" },
-  { value: "enregistrement", label: "Enregistrement" },
-  { value: "autre", label: "Autre" }
+const PORTFOLIO_CATEGORY_KEYS = [
+  "recouvrement",
+  "sanction",
+  "paiement",
+  "controle",
+  "declaration",
+  "attestation",
+  "accuse",
+  "douane_accises",
+  "ubo",
+  "enregistrement",
+  "autre"
 ];
 
 // Filtre par niveau : conserve un dossier si au moins une alerte du niveau
 // choisi y est active. "" = pas de filtre (tous les dossiers, y compris ceux
 // sans aucune alerte).
-const PORTFOLIO_LEVELS = [
-  { value: "", label: "Tous niveaux" },
-  { value: "critical", label: "Critique" },
-  { value: "warning", label: "A traiter" },
-  { value: "info", label: "Info" }
-];
+const PORTFOLIO_LEVEL_KEYS = ["critical", "warning", "info"];
 
 function countBadgeClass(level, count) {
   if (!count) {
@@ -81,6 +76,7 @@ function normalizeForSearch(value) {
 }
 
 function DashboardPage() {
+  const { t } = useLanguage();
   const [mandants, setMandants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -116,7 +112,7 @@ function DashboardPage() {
       const payload = await fetchMandants();
       setMandants(payload.data || []);
     } catch (err) {
-      setError(err.message || "Chargement impossible");
+      setError(err.message || t("dashboard.errorDefault"));
       setMandants([]);
     } finally {
       setLoading(false);
@@ -147,7 +143,7 @@ function DashboardPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setPortfolioError(err.message || "Chargement du portefeuille impossible");
+          setPortfolioError(err.message || t("dashboard.errorDefault"));
           setPortfolio([]);
         }
       } finally {
@@ -207,7 +203,7 @@ function DashboardPage() {
       await forceSync(ecbNumber);
       setSyncFeedback((current) => ({
         ...current,
-        [ecbNumber]: { tone: "ok", text: "Synchronisation lancée. Le résultat arrive d'ici une minute." }
+        [ecbNumber]: { tone: "ok", text: t("dashboard.syncLaunched") }
       }));
       // La synchronisation passe par la file d'attente : on laisse au worker le
       // temps de faire son travail avant de relire l'état.
@@ -215,7 +211,7 @@ function DashboardPage() {
     } catch (err) {
       setSyncFeedback((current) => ({
         ...current,
-        [ecbNumber]: { tone: "error", text: err.message || "Synchronisation impossible" }
+        [ecbNumber]: { tone: "error", text: err.message || t("dashboard.syncErrorDefault") }
       }));
     } finally {
       setSyncingEcb("");
@@ -250,7 +246,7 @@ function DashboardPage() {
       setDeleteConfirmText("");
       await load();
     } catch (err) {
-      setDeleteError(err.message || "Suppression impossible");
+      setDeleteError(err.message || t("dashboard.deleteModal.errorDefault"));
     } finally {
       setDeleting(false);
     }
@@ -281,19 +277,19 @@ function DashboardPage() {
     <section className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl border border-line bg-white p-4 shadow-soft">
-          <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Dossiers</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-gray-500">{t("dashboard.metrics.dossiers")}</p>
           <p className="mt-2 font-display text-3xl font-semibold">{metrics.total}</p>
         </article>
         <article className="rounded-2xl border border-emerald-200 bg-emerald-50/85 p-4 shadow-soft">
-          <p className="text-xs uppercase tracking-[0.18em] text-emerald-700">Statut alert</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-emerald-700">{t("dashboard.metrics.alertStatus")}</p>
           <p className="mt-2 font-display text-3xl font-semibold text-emerald-900">{metrics.alert}</p>
         </article>
         <article className="rounded-2xl border border-amber-200 bg-amber-50/85 p-4 shadow-soft">
-          <p className="text-xs uppercase tracking-[0.18em] text-amber-700">Statut warning</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-amber-700">{t("dashboard.metrics.warningStatus")}</p>
           <p className="mt-2 font-display text-3xl font-semibold text-amber-900">{metrics.warning}</p>
         </article>
         <article className="rounded-2xl border border-orange-200 bg-orange-50/90 p-4 shadow-soft">
-          <p className="text-xs uppercase tracking-[0.18em] text-orange-700">Alertes actives</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-orange-700">{t("dashboard.metrics.activeAlerts")}</p>
           <p className="mt-2 font-display text-3xl font-semibold text-orange-900">{metrics.activeAlerts}</p>
         </article>
       </div>
@@ -301,14 +297,14 @@ function DashboardPage() {
       <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-semibold">Portefeuille</h2>
-            <p className="text-sm text-gray-600">Tous vos dossiers, triés par urgence.</p>
+            <h2 className="font-display text-xl font-semibold">{t("dashboard.portfolio.title")}</h2>
+            <p className="text-sm text-gray-600">{t("dashboard.portfolio.subtitle")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <input
               className="w-44 rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink placeholder:text-gray-400"
               onChange={(event) => setPortfolioSearch(event.target.value)}
-              placeholder="Nom ou n° BCE"
+              placeholder={t("dashboard.portfolio.searchPlaceholder")}
               type="search"
               value={portfolioSearch}
             />
@@ -317,9 +313,10 @@ function DashboardPage() {
               onChange={(event) => setPortfolioLevel(event.target.value)}
               value={portfolioLevel}
             >
-              {PORTFOLIO_LEVELS.map((entry) => (
-                <option key={entry.value || "all-levels"} value={entry.value}>
-                  {entry.label}
+              <option value="">{t("dashboard.portfolio.levelAll")}</option>
+              {PORTFOLIO_LEVEL_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`dashboard.portfolio.level${key.charAt(0).toUpperCase()}${key.slice(1)}`)}
                 </option>
               ))}
             </select>
@@ -328,9 +325,10 @@ function DashboardPage() {
               onChange={(event) => setPortfolioCategory(event.target.value)}
               value={portfolioCategory}
             >
-              {PORTFOLIO_CATEGORIES.map((entry) => (
-                <option key={entry.value || "all"} value={entry.value}>
-                  {entry.label}
+              <option value="">{t("dashboard.portfolio.categoryAll")}</option>
+              {PORTFOLIO_CATEGORY_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`dashboard.portfolio.category.${key}`)}
                 </option>
               ))}
             </select>
@@ -340,26 +338,28 @@ function DashboardPage() {
         {!portfolioLoading && !portfolioError && portfolio.length > 0 && (
           <p className="mb-4 rounded-xl border border-red-100 bg-red-50/60 px-3 py-2 text-sm text-ink">
             {portfolioSummary.totalCritical > 0 ? (
-              <>
-                <span className="font-semibold text-danger">
-                  {portfolioSummary.totalCritical} alerte{portfolioSummary.totalCritical > 1 ? "s" : ""} critique
-                  {portfolioSummary.totalCritical > 1 ? "s" : ""}
-                </span>{" "}
-                chez {portfolioSummary.dossiersWithCritical} dossier{portfolioSummary.dossiersWithCritical > 1 ? "s" : ""}
-                {portfolioSummary.totalWarning > 0 && (
-                  <>, et {portfolioSummary.totalWarning} à traiter avant échéance</>
-                )}
-                .
-              </>
+              (() => {
+                const { criticalPart, dossierPart, warningPart } = t("dashboard.portfolio.summary", {
+                  critical: portfolioSummary.totalCritical,
+                  dossiers: portfolioSummary.dossiersWithCritical,
+                  warning: portfolioSummary.totalWarning
+                });
+                return (
+                  <>
+                    <span className="font-semibold text-danger">{criticalPart}</span> {dossierPart}
+                    {warningPart}.
+                  </>
+                );
+              })()
             ) : (
-              "Rien de critique en attente sur le portefeuille."
+              t("dashboard.portfolio.noneCritical")
             )}
           </p>
         )}
 
         {portfolioLoading && (
           <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            Chargement du portefeuille…
+            {t("dashboard.portfolio.loading")}
           </p>
         )}
 
@@ -371,13 +371,13 @@ function DashboardPage() {
 
         {!portfolioLoading && !portfolioError && portfolio.length > 0 && filteredPortfolio.length === 0 && (
           <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            Aucun dossier ne correspond à ces filtres.
+            {t("dashboard.portfolio.noMatch")}
           </p>
         )}
 
         {!portfolioLoading && !portfolioError && portfolio.length === 0 && (
           <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            Aucun dossier ne correspond à ce filtre.
+            {t("dashboard.portfolio.noFilterMatch")}
           </p>
         )}
 
@@ -396,8 +396,8 @@ function DashboardPage() {
                   to={`/alerts?mandant=${item.mandantEcb}`}
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-ink">{item.companyName || "Entreprise"}</p>
-                    <p className="text-xs text-gray-500">BCE {item.mandantEcb}</p>
+                    <p className="truncate font-semibold text-ink">{item.companyName || t("dashboard.portfolio.company")}</p>
+                    <p className="text-xs text-gray-500">{t("dashboard.bce")} {item.mandantEcb}</p>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -419,16 +419,18 @@ function DashboardPage() {
                           {item.topAlert.title}
                         </p>
                         {item.topAlert.documentDate && (
-                          <p className="text-xs text-gray-500">Document du {formatDate(item.topAlert.documentDate)}</p>
+                          <p className="text-xs text-gray-500">
+                            {t("dashboard.portfolio.documentOf", { date: formatDate(item.topAlert.documentDate) })}
+                          </p>
                         )}
                       </>
                     ) : (
-                      <p className="text-sm text-gray-400">Rien à traiter</p>
+                      <p className="text-sm text-gray-400">{t("dashboard.portfolio.nothingPending")}</p>
                     )}
                   </div>
 
                   <p className="text-xs text-gray-500 sm:text-right">
-                    Sync {formatDate(item.lastSyncAt)}
+                    {t("dashboard.portfolio.syncOf", { date: formatDate(item.lastSyncAt) })}
                   </p>
                 </Link>
               );
@@ -438,13 +440,13 @@ function DashboardPage() {
 
         <p className="mb-6 mt-1 flex flex-wrap gap-4 text-xs text-gray-500">
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-danger" /> Critique — conséquence immédiate
+            <span className="h-2 w-2 rounded-full bg-danger" /> {t("dashboard.portfolio.legendCritical")}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-warning" /> À traiter — délai en cours
+            <span className="h-2 w-2 rounded-full bg-warning" /> {t("dashboard.portfolio.legendWarning")}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-gray-300" /> Info — à archiver
+            <span className="h-2 w-2 rounded-full bg-gray-300" /> {t("dashboard.portfolio.legendInfo")}
           </span>
         </p>
       </article>
@@ -452,24 +454,24 @@ function DashboardPage() {
       <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-semibold">Vos dossiers</h2>
-            <p className="text-sm text-gray-600">Vos dossiers, tels que MyMinfin les a livrés.</p>
+            <h2 className="font-display text-xl font-semibold">{t("dashboard.folders.title")}</h2>
+            <p className="text-sm text-gray-600">{t("dashboard.folders.subtitle")}</p>
           </div>
           <button
             className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             onClick={load}
             type="button"
           >
-            Rafraîchir
+            {t("dashboard.refresh")}
           </button>
         </div>
 
-        {loading && <p className="text-gray-500">Chargement en cours…</p>}
+        {loading && <p className="text-gray-500">{t("dashboard.loading")}</p>}
         {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{error}</p>}
 
         {!loading && mandants.length === 0 && !error && (
           <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            Aucun dossier connecté pour le moment.
+            {t("dashboard.noneConnected")}
           </p>
         )}
 
@@ -485,15 +487,15 @@ function DashboardPage() {
                 key={mandant.ecbNumber}
               >
                 <div className="mb-2 flex items-start justify-between gap-3">
-                  <h3 className="font-display text-lg font-semibold leading-tight">{mandant.companyName || "Entreprise"}</h3>
+                  <h3 className="font-display text-lg font-semibold leading-tight">{mandant.companyName || t("dashboard.portfolio.company")}</h3>
                   <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${statusTone(mandant.status)}`}>
                     {mandant.status || "ok"}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">BCE: {mandant.ecbNumber}</p>
-                <p className="mt-1 text-sm text-gray-600">Alertes actives: {mandant.activeAlertCount ?? 0}</p>
-                <p className="mt-1 text-sm text-gray-600">Consentement: {formatDate(mandant.consentGivenAt)}</p>
-                <p className="mt-1 text-sm text-gray-600">Derniere sync: {formatDate(mandant.lastSyncAt)}</p>
+                <p className="text-sm text-gray-600">{t("dashboard.bce")}: {mandant.ecbNumber}</p>
+                <p className="mt-1 text-sm text-gray-600">{t("dashboard.activeAlerts")}: {mandant.activeAlertCount ?? 0}</p>
+                <p className="mt-1 text-sm text-gray-600">{t("dashboard.consent")}: {formatDate(mandant.consentGivenAt)}</p>
+                <p className="mt-1 text-sm text-gray-600">{t("dashboard.lastSync")}: {formatDate(mandant.lastSyncAt)}</p>
 
                 {!mandant.lastSyncAt && (
                   <div className="mt-3 border-t border-gray-100 pt-3">
@@ -507,7 +509,7 @@ function DashboardPage() {
                       onClick={() => handleSync(mandant.ecbNumber)}
                       type="button"
                     >
-                      {isSyncing ? "Synchronisation…" : "Premiere synchronisation"}
+                      {isSyncing ? t("dashboard.syncing") : t("dashboard.firstSync")}
                     </button>
 
                     {feedback && (
@@ -530,7 +532,7 @@ function DashboardPage() {
                     onClick={() => openDeleteModal(mandant)}
                     type="button"
                   >
-                    Supprimer ce dossier
+                    {t("dashboard.deleteFolder")}
                   </button>
                 </div>
               </article>
@@ -538,11 +540,7 @@ function DashboardPage() {
           })}
         </div>
 
-        <p className="mt-4 text-xs text-gray-500">
-          Une synchronisation automatique tourne chaque heure pour tous vos dossiers connectés —
-          pas besoin de resynchroniser à la main. Le bouton n'apparaît que pour un dossier qui
-          n'a encore jamais été synchronisé.
-        </p>
+        <p className="mt-4 text-xs text-gray-500">{t("dashboard.autoSyncNote")}</p>
       </article>
 
       {deleteTarget && (
@@ -554,16 +552,15 @@ function DashboardPage() {
             className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-floating"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 className="font-display text-lg font-semibold text-danger">Supprimer ce dossier ?</h3>
+            <h3 className="font-display text-lg font-semibold text-danger">{t("dashboard.deleteModal.title")}</h3>
             <p className="mt-2 text-sm text-gray-600">
-              Cette action est <strong>définitive</strong> : les documents, alertes et l'historique
-              de synchronisation de{" "}
-              <strong>{deleteTarget.companyName || "ce dossier"}</strong> (BCE {deleteTarget.ecbNumber})
-              seront supprimés de Vatu. Utilisez ceci uniquement si vous n'êtes plus mandataire de ce
-              client.
+              {t("dashboard.deleteModal.warning", {
+                company: deleteTarget.companyName || t("dashboard.deleteModal.thisFolder"),
+                ecb: deleteTarget.ecbNumber
+              })}
             </p>
             <p className="mt-3 text-sm text-gray-700">
-              Pour confirmer, tapez le numéro BCE <strong>{deleteTarget.ecbNumber}</strong> ci-dessous :
+              {t("dashboard.deleteModal.confirmPrompt", { ecb: deleteTarget.ecbNumber })}
             </p>
             <input
               autoFocus
@@ -587,7 +584,7 @@ function DashboardPage() {
                 onClick={closeDeleteModal}
                 type="button"
               >
-                Annuler
+                {t("dashboard.deleteModal.cancel")}
               </button>
               <button
                 className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
@@ -599,7 +596,7 @@ function DashboardPage() {
                 onClick={handleDeleteMandant}
                 type="button"
               >
-                {deleting ? "Suppression…" : "Supprimer définitivement"}
+                {deleting ? t("dashboard.deleteModal.deleting") : t("dashboard.deleteModal.confirm")}
               </button>
             </div>
           </div>

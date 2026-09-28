@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { acknowledgeAlert, fetchAlerts, fetchDocumentBlob, requestAlertExtraction } from "../api";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 // Miroir de ALLOWED_EXTRACTION_CATEGORIES cote backend
 // (extraction.service.js) : categories ou un montant/echeance a du sens.
@@ -43,6 +44,7 @@ function formatDate(value) {
 }
 
 function AlertsPage({ currentUser }) {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const hasProAccess =
     currentUser?.subscriptionPlan === "pro" &&
@@ -78,7 +80,7 @@ function AlertsPage({ currentUser }) {
       setAlerts(payload.items || []);
       setTotal(payload.total || 0);
     } catch (err) {
-      setError(err.message || "Chargement impossible");
+      setError(err.message || t("alerts.errorDefault"));
       setAlerts([]);
       setTotal(0);
     } finally {
@@ -100,7 +102,7 @@ function AlertsPage({ currentUser }) {
       await acknowledgeAlert(alertId);
       await loadAlerts();
     } catch (err) {
-      setError(err.message || "Acquittement impossible");
+      setError(err.message || t("alerts.acknowledgeErrorDefault"));
     } finally {
       setAcknowledgingId("");
     }
@@ -127,7 +129,7 @@ function AlertsPage({ currentUser }) {
       if (tab) {
         tab.close();
       }
-      setError(err.message || "Impossible d'ouvrir le document");
+      setError(err.message || t("alerts.viewErrorDefault"));
     } finally {
       setViewingId("");
     }
@@ -146,41 +148,46 @@ function AlertsPage({ currentUser }) {
       );
     } catch (err) {
       if (err.status === 402) {
-        setError("La lecture IA necessite l'offre Vatu Pro.");
+        setError(t("alerts.extractionProNeeded"));
       } else {
-        setError(err.message || "Lecture IA impossible");
+        setError(err.message || t("alerts.extractionErrorDefault"));
       }
     } finally {
       setExtractingId("");
     }
   }
 
+  const levelFilters = [
+    { key: "all", label: t("alerts.filter.all") },
+    { key: "critical", label: t("alerts.filter.critical") },
+    { key: "warning", label: t("alerts.filter.warning") },
+    { key: "info", label: t("alerts.filter.info") }
+  ];
+  const statusFilters = [
+    { key: "active", label: t("alerts.status.active") },
+    { key: "acknowledged", label: t("alerts.status.acknowledged") },
+    { key: "all", label: t("alerts.status.all") }
+  ];
+
   return (
     <section className="space-y-5">
       <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-semibold">Alertes fiscales</h2>
-            <p className="text-sm text-gray-600">
-              Ce qui demande une décision, remonté depuis MyMinfin. Alertes actives : {total}
-            </p>
+            <h2 className="font-display text-xl font-semibold">{t("alerts.title")}</h2>
+            <p className="text-sm text-gray-600">{t("alerts.subtitle", { total })}</p>
             {mandantFilter && (
               <p className="mt-1 text-xs text-gray-500">
-                Filtré sur le dossier BCE {mandantFilter} —{" "}
+                {t("alerts.filteredOn", { ecb: mandantFilter })}{" "}
                 <Link className="font-semibold text-accent hover:text-accent-strong" to="/alerts">
-                  voir tous les dossiers
+                  {t("alerts.seeAll")}
                 </Link>
               </p>
             )}
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="flex flex-wrap gap-2">
-              {[
-                { key: "all", label: "Toutes" },
-                { key: "critical", label: "Critiques" },
-                { key: "warning", label: "À traiter" },
-                { key: "info", label: "Information" }
-              ].map((entry) => (
+              {levelFilters.map((entry) => (
                 <button
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                     filter === entry.key
@@ -196,18 +203,14 @@ function AlertsPage({ currentUser }) {
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
-              {[
-                { key: "active", label: "Actives" },
-                { key: "acknowledged", label: "Traitées" },
-                { key: "all", label: "Toutes (statut)" }
-              ].map((entry) => (
+              {statusFilters.map((entry, index) => (
                 <button
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                     statusFilter === entry.key
                       ? "border border-line bg-gray-100 text-ink"
                       : "border border-line bg-white text-muted hover:bg-gray-50 hover:text-ink"
                   }`}
-                  key={entry.key}
+                  key={`${entry.key}-${index}`}
                   onClick={() => setStatusFilter(entry.key)}
                   type="button"
                 >
@@ -220,7 +223,7 @@ function AlertsPage({ currentUser }) {
 
         {loading && (
           <p className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            Chargement...
+            {t("alerts.loading")}
           </p>
         )}
 
@@ -232,7 +235,7 @@ function AlertsPage({ currentUser }) {
 
         {!loading && !error && alerts.length === 0 && (
           <p className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            Aucune alerte.
+            {t("alerts.none")}
           </p>
         )}
 
@@ -263,9 +266,9 @@ function AlertsPage({ currentUser }) {
                     <p className={`text-sm ${isAcknowledged ? "text-gray-500" : "text-gray-700"}`}>{alert.detail}</p>
                   )}
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
-                    <span>Mandant: {alert.companyName || alert.mandantEcb}</span>
-                    <span>BCE: {alert.mandantEcb}</span>
-                    <span>Date document: {formatDate(alert.documentDate)}</span>
+                    <span>{t("alerts.mandant")}: {alert.companyName || alert.mandantEcb}</span>
+                    <span>{t("alerts.bce")}: {alert.mandantEcb}</span>
+                    <span>{t("alerts.documentDate")}: {formatDate(alert.documentDate)}</span>
                   </div>
 
                   {alert.extraction && (
@@ -273,12 +276,12 @@ function AlertsPage({ currentUser }) {
                       <p className="font-semibold">{alert.extraction.accroche}</p>
                       <div className="mt-1 flex flex-wrap gap-3 text-xs">
                         {formatMontant(alert.extraction.montant) && (
-                          <span>Montant : {formatMontant(alert.extraction.montant)}</span>
+                          <span>{t("alerts.amount")} : {formatMontant(alert.extraction.montant)}</span>
                         )}
                         {formatEcheance(alert.extraction.dateEcheance) && (
-                          <span>Echeance : {formatEcheance(alert.extraction.dateEcheance)}</span>
+                          <span>{t("alerts.dueDate")} : {formatEcheance(alert.extraction.dateEcheance)}</span>
                         )}
-                        {alert.extraction.reference && <span>Reference : {alert.extraction.reference}</span>}
+                        {alert.extraction.reference && <span>{t("alerts.reference")} : {alert.extraction.reference}</span>}
                       </div>
                     </div>
                   )}
@@ -291,7 +294,7 @@ function AlertsPage({ currentUser }) {
                         onClick={() => onViewDocument(alert.documentFpsId)}
                         type="button"
                       >
-                        {viewingId === alert.documentFpsId ? "Ouverture..." : "Voir le document"}
+                        {viewingId === alert.documentFpsId ? t("alerts.opening") : t("alerts.viewDocument")}
                       </button>
                     )}
                     {!alert.extraction && EXTRACTABLE_CATEGORIES.has(alert.category) && hasProAccess && (
@@ -301,7 +304,7 @@ function AlertsPage({ currentUser }) {
                         onClick={() => onExtract(alert)}
                         type="button"
                       >
-                        {extractingId === alert.id ? "Lecture en cours..." : "Lire avec l'IA ✨"}
+                        {extractingId === alert.id ? t("alerts.readingInProgress") : t("alerts.readWithAi")}
                       </button>
                     )}
                     {!alert.extraction && EXTRACTABLE_CATEGORIES.has(alert.category) && !hasProAccess && (
@@ -309,7 +312,7 @@ function AlertsPage({ currentUser }) {
                         className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted shadow-soft transition hover:bg-gray-50"
                         to="/billing?plan=pro"
                       >
-                        Lire avec l'IA (Vatu Pro)
+                        {t("alerts.readWithAiPro")}
                       </Link>
                     )}
                     {alert.status === "active" && (
@@ -319,12 +322,12 @@ function AlertsPage({ currentUser }) {
                         onClick={() => onAcknowledge(alert.id)}
                         type="button"
                       >
-                        {acknowledgingId === alert.id ? "Marquage en cours..." : "Marquer comme traité"}
+                        {acknowledgingId === alert.id ? t("alerts.markingInProgress") : t("alerts.markDone")}
                       </button>
                     )}
                     {isAcknowledged && (
                       <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                        Traité le {formatDate(alert.acknowledgedAt)}
+                        {t("alerts.doneOn", { date: formatDate(alert.acknowledgedAt) })}
                       </span>
                     )}
                   </div>

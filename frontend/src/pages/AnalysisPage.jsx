@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchSignals } from "../api";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 /**
  * Page « Analyse ».
@@ -15,20 +16,6 @@ import { fetchSignals } from "../api";
  * volume, familles de documents, ancienneté des alertes ouvertes, fraîcheur de
  * la synchronisation.
  */
-
-const CATEGORY_LABELS = {
-  recouvrement: "Recouvrement",
-  sanction: "Sanction",
-  paiement: "Paiement",
-  controle: "Contrôle",
-  declaration: "Déclaration",
-  attestation: "Attestation",
-  accuse: "Accusé de réception",
-  douane_accises: "Douane & accises",
-  ubo: "Registre UBO",
-  enregistrement: "Enregistrement",
-  autre: "Autre"
-};
 
 // L'ordre dans lequel un comptable veut voir les familles : ce qui coûte de
 // l'argent d'abord, ce qui s'archive ensuite.
@@ -61,10 +48,10 @@ function formatDate(value) {
   });
 }
 
-function MandantCard({ signal }) {
+function MandantCard({ signal, t }) {
   const categories = CATEGORY_ORDER.filter((key) => signal.byCategory[key]).map((key) => ({
     key,
-    label: CATEGORY_LABELS[key] || key,
+    label: t(`analysis.category.${key}`),
     count: signal.byCategory[key]
   }));
 
@@ -75,24 +62,24 @@ function MandantCard({ signal }) {
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="font-display text-lg font-semibold leading-tight">
-            {signal.companyName || "Entreprise"}
+            {signal.companyName || t("analysis.company")}
           </h3>
-          <p className="text-xs text-gray-500">BCE {signal.mandantEcb}</p>
+          <p className="text-xs text-gray-500">{t("analysis.bce")} {signal.mandantEcb}</p>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {critical > 0 && (
             <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
-              {critical} critique{critical > 1 ? "s" : ""}
+              {t("analysis.criticalCount", { count: critical })}
             </span>
           )}
           {warning > 0 && (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
-              {warning} à traiter
+              {warning} {t("analysis.toHandle")}
             </span>
           )}
           {critical === 0 && warning === 0 && (
             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-              rien en attente
+              {t("analysis.nothingPending")}
             </span>
           )}
         </div>
@@ -100,24 +87,20 @@ function MandantCard({ signal }) {
 
       {signal.oldestOpenCriticalDays !== null && signal.oldestOpenCriticalDays >= 1 && (
         <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          La plus ancienne alerte critique est ouverte depuis{" "}
-          <strong>
-            {signal.oldestOpenCriticalDays} jour{signal.oldestOpenCriticalDays > 1 ? "s" : ""}
-          </strong>
-          .
+          {t("analysis.oldestCritical")}{" "}
+          <strong>{t("analysis.days", { count: signal.oldestOpenCriticalDays })}</strong>.
         </p>
       )}
 
       {signal.syncIsStale && (
         <p className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-          Dernière synchronisation : {formatDate(signal.lastSyncAt)}. Les chiffres ci-dessous
-          peuvent être en retard sur MyMinfin.
+          {t("analysis.staleSync", { date: formatDate(signal.lastSyncAt) })}
         </p>
       )}
 
       <p className="text-sm text-gray-700">
-        <strong>{signal.documentCount}</strong> document{signal.documentCount > 1 ? "s" : ""} sur la
-        fenêtre · dernier reçu le {formatDate(signal.lastDocumentDate)}
+        <strong>{signal.documentCount}</strong> {t("analysis.documentCount", { count: signal.documentCount })}{" "}
+        {t("analysis.onWindow", { date: formatDate(signal.lastDocumentDate) })}
       </p>
 
       {categories.length > 0 && (
@@ -133,9 +116,7 @@ function MandantCard({ signal }) {
 
       {signal.topTypes.length > 0 && (
         <div className="mt-3 border-t border-gray-100 pt-3">
-          <p className="mb-1.5 text-xs uppercase tracking-[0.16em] text-gray-500">
-            Types les plus fréquents
-          </p>
+          <p className="mb-1.5 text-xs uppercase tracking-[0.16em] text-gray-500">{t("analysis.topTypes")}</p>
           <ul className="space-y-1">
             {signal.topTypes.map((type) => (
               <li className="flex items-center gap-2 text-sm text-gray-700" key={type.rawType}>
@@ -154,6 +135,7 @@ function MandantCard({ signal }) {
 }
 
 function AnalysisPage() {
+  const { t } = useLanguage();
   const [signals, setSignals] = useState([]);
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -170,7 +152,7 @@ function AnalysisPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err.message || "Chargement impossible");
+        setError(err.message || t("analysis.errorDefault"));
         setSignals([]);
       })
       .finally(() => {
@@ -185,14 +167,14 @@ function AnalysisPage() {
   return (
     <section className="space-y-5">
       <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
-        <h2 className="font-display text-xl font-semibold">Analyse des flux</h2>
+        <h2 className="font-display text-xl font-semibold">{t("analysis.title")}</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Volume et nature des documents reçus de MyMinfin sur{" "}
-          {meta?.windowDays ? `${meta.windowDays} jours` : "la fenêtre de rétention"}, et état des
-          alertes ouvertes. Tous les chiffres proviennent des documents réellement synchronisés.
+          {t("analysis.subtitle", {
+            window: meta?.windowDays ? t("analysis.windowDays", { days: meta.windowDays }) : t("analysis.windowDefault")
+          })}
         </p>
 
-        {loading && <p className="mt-5 text-gray-500">Chargement en cours…</p>}
+        {loading && <p className="mt-5 text-gray-500">{t("analysis.loading")}</p>}
 
         {error && (
           <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">
@@ -202,23 +184,19 @@ function AnalysisPage() {
 
         {!loading && !error && signals.length === 0 && (
           <p className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            Aucun mandant connecté. Connectez un dossier pour voir apparaître son activité.
+            {t("analysis.noMandant")}
           </p>
         )}
 
         {signals.length > 0 && (
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {signals.map((signal) => (
-              <MandantCard key={signal.mandantEcb} signal={signal} />
+              <MandantCard key={signal.mandantEcb} signal={signal} t={t} />
             ))}
           </div>
         )}
 
-        <p className="mt-5 border-t border-gray-100 pt-3 text-xs text-gray-500">
-          Les montants et les échéances ne sont pas encore extraits du contenu des documents : rien
-          n'est estimé ici. Sur le jeu observé, 29 % des documents portent un montant ou une date
-          d'échéance exploitable — c'est le prochain palier.
-        </p>
+        <p className="mt-5 border-t border-gray-100 pt-3 text-xs text-gray-500">{t("analysis.footerNote")}</p>
       </article>
     </section>
   );

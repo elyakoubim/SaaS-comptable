@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 function LoginPage({
   defaultEmail = "",
@@ -12,6 +13,7 @@ function LoginPage({
   onLogin,
   onRegister
 }) {
+  const { t } = useLanguage();
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("");
   const [registerFullName, setRegisterFullName] = useState("");
@@ -45,33 +47,33 @@ function LoginPage({
       <div className="grid gap-5 lg:grid-cols-2">
       <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
         <div className="mb-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Espace cabinet</p>
-          <h2 className="font-display text-2xl font-semibold">Authentification</h2>
-          <p className="mt-1 text-sm text-gray-600">Connectez-vous pour acceder aux modules Dashboard, Alertes et Analyse.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t("login.spaceLabel")}</p>
+          <h2 className="font-display text-2xl font-semibold">{t("login.title")}</h2>
+          <p className="mt-1 text-sm text-gray-600">{t("login.subtitle")}</p>
         </div>
 
         <form className="space-y-3" onSubmit={onLoginSubmit}>
           <label className="block text-sm font-semibold text-gray-700" htmlFor="email">
-            Email
+            {t("login.email")}
           </label>
           <input
             autoComplete="username"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="email"
-            placeholder="vous@votre-fiduciaire.be"
+            placeholder={t("login.emailPlaceholder")}
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
 
           <label className="block text-sm font-semibold text-gray-700" htmlFor="password">
-            Mot de passe
+            {t("login.password")}
           </label>
           <input
             autoComplete="current-password"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="password"
-            placeholder="Votre mot de passe"
+            placeholder={t("login.passwordPlaceholder")}
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -81,7 +83,7 @@ function LoginPage({
 
           <div className="text-right">
             <Link className="text-sm font-medium text-accent hover:text-accent-strong" to="/forgot-password">
-              Mot de passe oublie ?
+              {t("login.forgotPassword")}
             </Link>
           </div>
 
@@ -90,57 +92,55 @@ function LoginPage({
             disabled={isLoggingIn}
             type="submit"
           >
-            {isLoggingIn ? "Connexion..." : "Se connecter"}
+            {isLoggingIn ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
       </article>
 
       <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
         <div className="mb-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Nouveau compte</p>
-          <h2 className="font-display text-2xl font-semibold">Inscription</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t("register.newAccountLabel")}</p>
+          <h2 className="font-display text-2xl font-semibold">{t("register.title")}</h2>
           <p className="mt-1 text-sm text-gray-600">
-            {inviteToken
-              ? "Vous avez ete invite a rejoindre un cabinet existant sur Vatu."
-              : "Creez un compte professionnel pour votre cabinet."}
+            {inviteToken ? t("register.subtitleInvite") : t("register.subtitleDefault")}
           </p>
         </div>
 
         <form className="space-y-3" onSubmit={onRegisterSubmit}>
           <label className="block text-sm font-semibold text-gray-700" htmlFor="register-fullname">
-            Nom complet
+            {t("register.fullName")}
           </label>
           <input
             autoComplete="name"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="register-fullname"
-            placeholder="Votre fiduciaire"
+            placeholder={t("register.fullNamePlaceholder")}
             type="text"
             value={registerFullName}
             onChange={(event) => setRegisterFullName(event.target.value)}
           />
 
           <label className="block text-sm font-semibold text-gray-700" htmlFor="register-email">
-            Email professionnel
+            {t("register.emailPro")}
           </label>
           <input
             autoComplete="email"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="register-email"
-            placeholder="contact@cabinet.be"
+            placeholder={t("register.emailProPlaceholder")}
             type="email"
             value={registerEmail}
             onChange={(event) => setRegisterEmail(event.target.value)}
           />
 
           <label className="block text-sm font-semibold text-gray-700" htmlFor="register-password">
-            Mot de passe
+            {t("register.password")}
           </label>
           <input
             autoComplete="new-password"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="register-password"
-            placeholder="Minimum 8 caracteres"
+            placeholder={t("register.passwordPlaceholder")}
             type="password"
             value={registerPassword}
             onChange={(event) => setRegisterPassword(event.target.value)}
@@ -160,7 +160,7 @@ function LoginPage({
             disabled={isRegistering}
             type="submit"
           >
-            {isRegistering ? "Inscription..." : "Creer mon compte"}
+            {isRegistering ? t("register.submitting") : t("register.submit")}
           </button>
         </form>
       </article>

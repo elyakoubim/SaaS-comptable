@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 function ForgotPasswordPage({ isSubmitting = false, error = "", successMessage = "", onSubmit }) {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
 
   async function handleSubmit(event) {
@@ -13,23 +15,20 @@ function ForgotPasswordPage({ isSubmitting = false, error = "", successMessage =
     <section className="mx-auto mt-6 max-w-md">
       <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
         <div className="mb-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Espace cabinet</p>
-          <h2 className="font-display text-2xl font-semibold">Mot de passe oublie</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Indiquez votre email professionnel : si un compte existe, vous recevrez un lien pour
-            choisir un nouveau mot de passe.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t("login.spaceLabel")}</p>
+          <h2 className="font-display text-2xl font-semibold">{t("forgot.title")}</h2>
+          <p className="mt-1 text-sm text-gray-600">{t("forgot.subtitle")}</p>
         </div>
 
         <form className="space-y-3" onSubmit={handleSubmit}>
           <label className="block text-sm font-semibold text-gray-700" htmlFor="forgot-email">
-            Email
+            {t("forgot.email")}
           </label>
           <input
             autoComplete="username"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="forgot-email"
-            placeholder="vous@votre-fiduciaire.be"
+            placeholder={t("login.emailPlaceholder")}
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -47,12 +46,12 @@ function ForgotPasswordPage({ isSubmitting = false, error = "", successMessage =
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Envoi..." : "Envoyer le lien de reinitialisation"}
+            {isSubmitting ? t("forgot.submitting") : t("forgot.submit")}
           </button>
 
           <p className="text-center text-sm text-gray-600">
             <Link className="font-semibold text-accent hover:text-accent-strong" to="/login">
-              Retour a la connexion
+              {t("forgot.backToLogin")}
             </Link>
           </p>
         </form>

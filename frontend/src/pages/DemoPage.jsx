@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DEMO_PORTFOLIO, DEMO_ALERTS } from "../demoData";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 function levelTone(level) {
   if (level === "critical") {
@@ -42,10 +43,11 @@ function formatDate(value) {
 // executee ici (acquitter, voir le document...) : chaque bouton affiche un
 // message invitant a creer un compte plutot que de simuler un vrai backend.
 function DemoPage() {
+  const { t } = useLanguage();
   const [notice, setNotice] = useState("");
 
   function showAccountNotice() {
-    setNotice("Cette action necessite un compte Vatu - c'est gratuit et prend une minute.");
+    setNotice(t("demo.accountNotice"));
   }
 
   return (
@@ -53,28 +55,21 @@ function DemoPage() {
       <article className="rounded-2xl border border-accent-line bg-accent-soft p-5 shadow-floating sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-semibold text-accent-strong">
-              Demonstration Vatu - donnees fictives
-            </h2>
-            <p className="mt-1 text-sm text-accent-strong">
-              Aucun compte requis. Les dossiers, montants et documents ci-dessous sont des exemples,
-              pas de vraies donnees MyMinfin.
-            </p>
+            <h2 className="font-display text-xl font-semibold text-accent-strong">{t("demo.title")}</h2>
+            <p className="mt-1 text-sm text-accent-strong">{t("demo.subtitle")}</p>
           </div>
           <Link
             className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-strong"
             to="/login"
           >
-            Creer mon compte gratuit
+            {t("demo.createFreeAccount")}
           </Link>
         </div>
       </article>
 
       <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
-        <h3 className="font-display text-lg font-semibold text-ink">Portefeuille (exemple)</h3>
-        <p className="mb-4 text-sm text-gray-600">
-          Un cabinet avec plusieurs dossiers, tries par urgence.
-        </p>
+        <h3 className="font-display text-lg font-semibold text-ink">{t("demo.portfolioTitle")}</h3>
+        <p className="mb-4 text-sm text-gray-600">{t("demo.portfolioSubtitle")}</p>
         <div className="grid gap-2">
           {DEMO_PORTFOLIO.map((item) => {
             const isDormant = !item.counts.critical && !item.counts.warning && !item.counts.info;
@@ -87,7 +82,7 @@ function DemoPage() {
               >
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-ink">{item.companyName}</p>
-                  <p className="text-xs text-gray-500">BCE {item.mandantEcb} (exemple)</p>
+                  <p className="text-xs text-gray-500">BCE {item.mandantEcb} {t("demo.example")}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-2 text-xs font-bold ${countBadgeClass("critical", item.counts.critical)}`}>
@@ -104,7 +99,7 @@ function DemoPage() {
                   {item.topAlert ? (
                     <p className="truncate text-sm font-medium text-ink">{item.topAlert.title}</p>
                   ) : (
-                    <p className="text-sm text-gray-400">Rien a traiter</p>
+                    <p className="text-sm text-gray-400">{t("demo.nothingPending")}</p>
                   )}
                 </div>
               </div>
@@ -114,11 +109,8 @@ function DemoPage() {
       </article>
 
       <article className="rounded-2xl border border-line bg-white p-5 shadow-floating sm:p-6">
-        <h3 className="font-display text-lg font-semibold text-ink">Alertes (exemple)</h3>
-        <p className="mb-4 text-sm text-gray-600">
-          Ce que Vatu Pro fait ressortir de chaque document - montant, echeance, l'essentiel avant
-          meme d'ouvrir le PDF.
-        </p>
+        <h3 className="font-display text-lg font-semibold text-ink">{t("demo.alertsTitle")}</h3>
+        <p className="mb-4 text-sm text-gray-600">{t("demo.alertsSubtitle")}</p>
 
         {notice && (
           <p className="mb-3 rounded-xl border border-accent-line bg-accent-soft px-3 py-2 text-sm text-accent-strong">
@@ -140,19 +132,19 @@ function DemoPage() {
               </div>
               <p className="text-sm text-gray-700">{alert.detail}</p>
               <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
-                <span>Mandant : {alert.companyName}</span>
-                <span>Date document : {formatDate(alert.documentDate)}</span>
+                <span>{t("demo.mandant")} : {alert.companyName}</span>
+                <span>{t("demo.documentDate")} : {formatDate(alert.documentDate)}</span>
               </div>
 
               {alert.extraction && (
                 <div className="mt-3 rounded-xl border border-accent-line bg-accent-soft p-3 text-sm text-accent-strong">
                   <p className="font-semibold">{alert.extraction.accroche}</p>
                   <div className="mt-1 flex flex-wrap gap-3 text-xs">
-                    {alert.extraction.montant && <span>Montant : {alert.extraction.montant}</span>}
+                    {alert.extraction.montant && <span>{t("demo.amount")} : {alert.extraction.montant}</span>}
                     {alert.extraction.dateEcheance && (
-                      <span>Echeance : {formatDate(alert.extraction.dateEcheance)}</span>
+                      <span>{t("demo.dueDate")} : {formatDate(alert.extraction.dateEcheance)}</span>
                     )}
-                    {alert.extraction.reference && <span>Reference : {alert.extraction.reference}</span>}
+                    {alert.extraction.reference && <span>{t("demo.reference")} : {alert.extraction.reference}</span>}
                   </div>
                 </div>
               )}
@@ -163,7 +155,7 @@ function DemoPage() {
                   onClick={showAccountNotice}
                   type="button"
                 >
-                  Voir le document
+                  {t("demo.viewDocument")}
                 </button>
                 {!alert.extraction && (
                   <button
@@ -171,7 +163,7 @@ function DemoPage() {
                     onClick={showAccountNotice}
                     type="button"
                   >
-                    Lire avec l'IA ✨
+                    {t("demo.readWithAi")}
                   </button>
                 )}
                 <button
@@ -179,7 +171,7 @@ function DemoPage() {
                   onClick={showAccountNotice}
                   type="button"
                 >
-                  Marquer comme traite
+                  {t("demo.markDone")}
                 </button>
               </div>
             </article>
@@ -188,14 +180,12 @@ function DemoPage() {
       </article>
 
       <article className="rounded-2xl border border-line bg-white p-5 text-center shadow-floating sm:p-6">
-        <p className="text-sm text-gray-600">
-          Convaincu ? Connectez vos vrais dossiers MyMinfin en quelques minutes.
-        </p>
+        <p className="text-sm text-gray-600">{t("demo.convinced")}</p>
         <Link
           className="mt-3 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-strong"
           to="/login"
         >
-          Creer mon compte gratuit
+          {t("demo.createFreeAccount")}
         </Link>
       </article>
     </section>

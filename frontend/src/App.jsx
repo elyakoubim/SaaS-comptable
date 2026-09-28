@@ -25,14 +25,15 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage.jsx";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage.jsx";
 import { DemoPage } from "./pages/DemoPage.jsx";
 import { TeamPage } from "./pages/TeamPage.jsx";
+import { useLanguage } from "./i18n/LanguageContext.jsx";
 
 const navItems = [
-  { to: "/", label: "Dossiers" },
-  { to: "/alerts", label: "Alertes" },
-  { to: "/analysis", label: "Analyse" },
-  { to: "/connect", label: "Connecter" },
-  { to: "/billing", label: "Abonnement" },
-  { to: "/team", label: "Equipe" }
+  { to: "/", key: "nav.dossiers" },
+  { to: "/alerts", key: "nav.alerts" },
+  { to: "/analysis", key: "nav.analysis" },
+  { to: "/connect", key: "nav.connect" },
+  { to: "/billing", key: "nav.billing" },
+  { to: "/team", key: "nav.team" }
 ];
 
 /**
@@ -63,11 +64,12 @@ function VatuMark() {
 }
 
 function EmailVerificationBanner({ isSending, sendError, sendSuccess, onResend }) {
+  const { t } = useLanguage();
   return (
     <div className="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         <span>
-          {sendSuccess || "Confirmez votre adresse email pour securiser votre compte."}
+          {sendSuccess || t("emailBanner.default")}
           {sendError && <span className="ml-2 text-danger">{sendError}</span>}
         </span>
         <button
@@ -76,15 +78,42 @@ function EmailVerificationBanner({ isSending, sendError, sendSuccess, onResend }
           onClick={onResend}
           type="button"
         >
-          {isSending ? "Envoi..." : "Renvoyer l'email"}
+          {isSending ? t("emailBanner.sending") : t("emailBanner.resend")}
         </button>
       </div>
     </div>
   );
 }
 
+// Petit bascule FR/NL, deux lettres cliquables (pas un <select> : deux langues
+// seulement, autant montrer les deux d'un coup plutot que d'ouvrir un menu).
+function LanguageSwitch() {
+  const { lang, setLang, t } = useLanguage();
+  return (
+    <div
+      aria-label={t("app.langSwitch.label")}
+      className="flex items-center overflow-hidden rounded-lg border border-line text-xs font-semibold"
+      role="group"
+    >
+      {["fr", "nl"].map((code) => (
+        <button
+          className={`px-2 py-1.5 uppercase transition ${
+            lang === code ? "bg-accent text-white" : "bg-white text-muted hover:bg-gray-50 hover:text-ink"
+          }`}
+          key={code}
+          onClick={() => setLang(code)}
+          type="button"
+        >
+          {code}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerificationBanner }) {
   const location = useLocation();
+  const { t } = useLanguage();
   const userLabel = currentUser?.fullName || currentUser?.email || "";
 
   return (
@@ -115,7 +144,7 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerif
                     key={item.to}
                     to={item.to}
                   >
-                    {item.label}
+                    {t(item.key)}
                   </Link>
                 );
               })}
@@ -123,6 +152,7 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerif
           )}
 
           <div className="ml-auto flex items-center gap-3">
+            <LanguageSwitch />
             {isAuthenticated ? (
               <>
                 {userLabel && (
@@ -135,7 +165,7 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerif
                   onClick={onLogout}
                   type="button"
                 >
-                  Se déconnecter
+                  {t("app.logout")}
                 </button>
               </>
             ) : location.pathname === "/demo" ? (
@@ -143,11 +173,11 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerif
                 className="rounded-full border border-accent-line bg-accent-soft px-3 py-1 text-sm font-medium text-accent-strong hover:bg-accent-line"
                 to="/login"
               >
-                Creer mon compte
+                {t("app.createAccount")}
               </Link>
             ) : (
               <span className="rounded-full border border-accent-line bg-accent-soft px-3 py-1 text-sm font-medium text-accent-strong">
-                Connexion requise
+                {t("app.loginRequired")}
               </span>
             )}
           </div>
@@ -162,8 +192,7 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerif
 
       <footer className="border-t border-line">
         <div className="mx-auto w-full max-w-7xl px-4 py-5 text-xs text-muted sm:px-6 lg:px-8">
-          Vatu passe par une connexion officielle et sécurisée, en lecture seule. La décision finale —
-          valider, encoder, payer — vous revient.
+          {t("app.footer")}
         </div>
       </footer>
     </div>
@@ -175,6 +204,7 @@ const VALID_INTERVALS = new Set(["monthly", "annual"]);
 
 export default function App() {
   const location = useLocation();
+  const { t } = useLanguage();
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -253,7 +283,7 @@ export default function App() {
       setCurrentUser(payload.user || null);
       await redirectToRequestedCheckout(payload.user);
     } catch (error) {
-      setLoginError(error.message || "Connexion impossible");
+      setLoginError(error.message || t("login.errorDefault"));
     } finally {
       setIsLoggingIn(false);
     }
@@ -268,10 +298,10 @@ export default function App() {
       setCurrentUser(payload.user || null);
       const redirected = await redirectToRequestedCheckout(payload.user);
       if (!redirected) {
-        setRegisterSuccess("Inscription reussie. Verifiez votre boite mail pour confirmer votre adresse.");
+        setRegisterSuccess(t("register.successDefault"));
       }
     } catch (error) {
-      setRegisterError(error.message || "Inscription impossible");
+      setRegisterError(error.message || t("register.errorDefault"));
     } finally {
       setIsRegistering(false);
     }
@@ -283,11 +313,9 @@ export default function App() {
       setForgotPasswordError("");
       setForgotPasswordSuccess("");
       const payload = await requestPasswordReset(email);
-      setForgotPasswordSuccess(
-        payload.message || "Si un compte existe pour cette adresse, un email vient d'etre envoye."
-      );
+      setForgotPasswordSuccess(payload.message || t("forgot.successDefault"));
     } catch (error) {
-      setForgotPasswordError(error.message || "Demande impossible");
+      setForgotPasswordError(error.message || t("forgot.errorDefault"));
     } finally {
       setIsRequestingReset(false);
     }
@@ -300,9 +328,9 @@ export default function App() {
       setResetPasswordSuccess("");
       const payload = await resetPassword({ token, password });
       setCurrentUser(payload.user || null);
-      setResetPasswordSuccess("Mot de passe mis a jour. Redirection...");
+      setResetPasswordSuccess(t("reset.successDefault"));
     } catch (error) {
-      setResetPasswordError(error.message || "Reinitialisation impossible");
+      setResetPasswordError(error.message || t("reset.errorDefault"));
     } finally {
       setIsResettingPassword(false);
     }
@@ -312,7 +340,7 @@ export default function App() {
     try {
       setVerifyEmailStatus("verifying");
       const payload = await verifyEmail(token);
-      setVerifyEmailMessage(payload.message || "Adresse email confirmee.");
+      setVerifyEmailMessage(payload.message || t("verify.successDefault"));
       setVerifyEmailStatus("success");
       // Le compte peut avoir ete verifie depuis un autre onglet que celui de
       // la session active : on rafraichit currentUser pour faire disparaitre
@@ -324,7 +352,7 @@ export default function App() {
         // Pas grave si pas connecte ici (ex: verification depuis un autre appareil).
       }
     } catch (error) {
-      setVerifyEmailMessage(error.message || "Lien de confirmation invalide ou expire");
+      setVerifyEmailMessage(error.message || t("verify.errorDefault"));
       setVerifyEmailStatus("error");
     }
   }
@@ -335,9 +363,9 @@ export default function App() {
       setResendVerificationError("");
       setResendVerificationSuccess("");
       const payload = await resendVerificationEmail();
-      setResendVerificationSuccess(payload.message || "Email envoye.");
+      setResendVerificationSuccess(payload.message || t("emailBanner.sentDefault"));
     } catch (error) {
-      setResendVerificationError(error.message || "Envoi impossible");
+      setResendVerificationError(error.message || t("forgot.errorDefault"));
     } finally {
       setIsResendingVerification(false);
     }
@@ -358,7 +386,7 @@ export default function App() {
     return (
       <AppShell currentUser={null} isAuthenticated={false} onLogout={handleLogout}>
         <section className="rounded-2xl border border-line bg-white p-5 text-sm text-gray-600 shadow-soft">
-          Vérification de la session…
+          {t("app.checkingSession")}
         </section>
       </AppShell>
     );
@@ -369,14 +397,14 @@ export default function App() {
 
   const requestedParams = new URLSearchParams(location.search);
   const requestedPlan = requestedParams.get("plan");
-  const planLabels = { connect: "Vatu Connect", pro: "Vatu Pro" };
-  const intervalLabels = { monthly: "mensuel", annual: "annuel" };
-  const planNotice =
-    VALID_PLANS.has(requestedPlan)
-      ? `Inscription pour ${planLabels[requestedPlan]} (${
-          intervalLabels[requestedParams.get("interval")] || "annuel"
-        }) - vous serez redirige vers le paiement juste apres.`
-      : "";
+  const planLabels = { connect: t("login.plan.connect"), pro: t("login.plan.pro") };
+  const intervalLabels = { monthly: t("login.interval.monthly"), annual: t("login.interval.annual") };
+  const planNotice = VALID_PLANS.has(requestedPlan)
+    ? t("login.planNotice", {
+        plan: planLabels[requestedPlan],
+        interval: intervalLabels[requestedParams.get("interval")] || t("login.interval.annual")
+      })
+    : "";
 
   return (
     <AppShell

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 function ResetPasswordPage({ isSubmitting = false, error = "", successMessage = "", onSubmit }) {
+  const { t } = useLanguage();
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [localError, setLocalError] = useState("");
@@ -13,11 +15,11 @@ function ResetPasswordPage({ isSubmitting = false, error = "", successMessage = 
     setLocalError("");
 
     if (password.length < 8) {
-      setLocalError("Le mot de passe doit contenir au moins 8 caracteres.");
+      setLocalError(t("reset.errorTooShort"));
       return;
     }
     if (password !== passwordConfirm) {
-      setLocalError("Les deux mots de passe ne correspondent pas.");
+      setLocalError(t("reset.errorMismatch"));
       return;
     }
 
@@ -29,11 +31,11 @@ function ResetPasswordPage({ isSubmitting = false, error = "", successMessage = 
       <section className="mx-auto mt-6 max-w-md">
         <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
           <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">
-            Lien de reinitialisation invalide ou incomplet.
+            {t("reset.invalidLink")}
           </p>
           <p className="mt-4 text-center text-sm text-gray-600">
             <Link className="font-semibold text-accent hover:text-accent-strong" to="/forgot-password">
-              Demander un nouveau lien
+              {t("reset.requestNewLink")}
             </Link>
           </p>
         </article>
@@ -45,33 +47,33 @@ function ResetPasswordPage({ isSubmitting = false, error = "", successMessage = 
     <section className="mx-auto mt-6 max-w-md">
       <article className="rounded-2xl border border-line bg-white p-6 shadow-floating sm:p-7">
         <div className="mb-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Espace cabinet</p>
-          <h2 className="font-display text-2xl font-semibold">Nouveau mot de passe</h2>
-          <p className="mt-1 text-sm text-gray-600">Choisissez un nouveau mot de passe pour votre compte.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">{t("login.spaceLabel")}</p>
+          <h2 className="font-display text-2xl font-semibold">{t("reset.title")}</h2>
+          <p className="mt-1 text-sm text-gray-600">{t("reset.subtitle")}</p>
         </div>
 
         <form className="space-y-3" onSubmit={handleSubmit}>
           <label className="block text-sm font-semibold text-gray-700" htmlFor="reset-password">
-            Nouveau mot de passe
+            {t("reset.newPassword")}
           </label>
           <input
             autoComplete="new-password"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="reset-password"
-            placeholder="Minimum 8 caracteres"
+            placeholder={t("reset.newPasswordPlaceholder")}
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
 
           <label className="block text-sm font-semibold text-gray-700" htmlFor="reset-password-confirm">
-            Confirmer le mot de passe
+            {t("reset.confirmPassword")}
           </label>
           <input
             autoComplete="new-password"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="reset-password-confirm"
-            placeholder="Retapez le mot de passe"
+            placeholder={t("reset.confirmPasswordPlaceholder")}
             type="password"
             value={passwordConfirm}
             onChange={(event) => setPasswordConfirm(event.target.value)}
@@ -93,7 +95,7 @@ function ResetPasswordPage({ isSubmitting = false, error = "", successMessage = 
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Enregistrement..." : "Choisir ce mot de passe"}
+            {isSubmitting ? t("reset.submitting") : t("reset.submit")}
           </button>
         </form>
       </article>

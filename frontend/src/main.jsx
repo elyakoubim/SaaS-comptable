@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Sentry } from "./instrument.js";
 import App from "./App.jsx";
+import { LanguageProvider } from "./i18n/LanguageContext.jsx";
 import "./styles.css";
 
 function ErrorFallback() {
@@ -11,6 +12,9 @@ function ErrorFallback() {
     <div className="mx-auto mt-16 max-w-md rounded-2xl border border-line bg-white p-6 text-center shadow-floating">
       <p className="text-sm text-gray-600">
         Une erreur inattendue est survenue. Rechargez la page ; si ça persiste, contactez-nous.
+        <br />
+        Er is een onverwachte fout opgetreden. Herlaad de pagina; als het probleem aanhoudt, neem
+        contact met ons op.
       </p>
     </div>
   );
@@ -19,9 +23,11 @@ function ErrorFallback() {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <LanguageProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </LanguageProvider>
     </Sentry.ErrorBoundary>
   </React.StrictMode>
 );
