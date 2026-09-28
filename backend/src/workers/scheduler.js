@@ -16,7 +16,20 @@ import {
 } from "../repositories/mandant.repository.js";
 import { upsertDocument } from "../repositories/document.repository.js";
 import { createAlert, existsForDocument } from "../repositories/alert.repository.js";
+import { recordSyncRun } from "../repositories/syncRun.repository.js";
 import { decryptText } from "../utils/tokenCrypto.js";
+
+const SYNC_JOB_TYPE = "document_sync";
+
+// Un souci sur le journal ne doit jamais faire echouer la synchronisation
+// elle-meme (ni masquer l'erreur d'origine) : on avale et on logge en console.
+async function logSyncRun(params) {
+  try {
+    await recordSyncRun(params);
+  } catch (loggingError) {
+    console.error(`[sync-run] echec d'ecriture du journal pour ${params.mandantEcb}: ${loggingError.message}`);
+  }
+}
 import {
   DOCUMENT_SYNC_QUEUE_NAME,
   documentSyncQueue,
@@ -100,6 +113,7 @@ async function processDocumentSyncJob(job) {
     throw new Error(`invalid ecbNumber in job data: "${ecbNumber}"`);
   }
 
+  const startedAt = new Date();
   const mandant = await findMandantByEcb(ecbNumber);
   const since = resolveSince(job.data?.since, mandant?.last_sync_at);
   console.log(
@@ -164,6 +178,7 @@ async function processDocumentSyncJob(job) {
     console.log(
       `[doc-sync] ${ecbNumber}: ${documents.length} documents, ${createdAlerts} new alerts`
     );
+    await logSyncRun({ mandantEcb: ecbNumber, jobType: SYNC_JOB_TYPE, status: "success", startedAt });
   } catch (error) {
     if (error instanceof RateLimitError) {
       const delayMs = Math.max(1, error.retryAfterSeconds || 60) * 1000;
@@ -171,6 +186,14 @@ async function processDocumentSyncJob(job) {
         `[doc-sync] rate limit hit for ${ecbNumber}, rescheduling in ${delayMs}ms (instance=${error.instance || "n/a"})`
       );
       await enqueueDocumentSyncForMandant(ecbNumber, { delay: delayMs, since });
+      await logSyncRun({
+        mandantEcb: ecbNumber,
+        jobType: SYNC_JOB_TYPE,
+        status: "failed",
+        errorCode: "RATE_LIMIT",
+        errorDetail: error.message,
+        startedAt
+      });
       throw error;
     }
 
@@ -179,6 +202,14 @@ async function processDocumentSyncJob(job) {
         console.warn(
           `[doc-sync] auth retryable for ${ecbNumber} (likely token expired) — BullMQ will retry after backoff; hourly refresh scheduler should renew the token in the meantime`
         );
+        await logSyncRun({
+          mandantEcb: ecbNumber,
+          jobType: SYNC_JOB_TYPE,
+          status: "failed",
+          errorCode: "AUTH_RETRYABLE",
+          errorDetail: error.message,
+          startedAt
+        });
         throw error;
       }
       // TODO: marquer le mandant comme "needs_reconnect" — pas de valeur dans
@@ -188,6 +219,14 @@ async function processDocumentSyncJob(job) {
       console.error(
         `[doc-sync] auth NON-retryable for ${ecbNumber}: ${error.message} (status=${error.status}, instance=${error.instance || "n/a"})`
       );
+      await logSyncRun({
+        mandantEcb: ecbNumber,
+        jobType: SYNC_JOB_TYPE,
+        status: "failed",
+        errorCode: "AUTH_FAILED",
+        errorDetail: error.message,
+        startedAt
+      });
       return;
     }
 
@@ -195,10 +234,26 @@ async function processDocumentSyncJob(job) {
       console.error(
         `[doc-sync] API error for ${ecbNumber}: ${error.message} (status=${error.status}, instance=${error.instance || "n/a"})`
       );
+      await logSyncRun({
+        mandantEcb: ecbNumber,
+        jobType: SYNC_JOB_TYPE,
+        status: "failed",
+        errorCode: "API_ERROR",
+        errorDetail: error.message,
+        startedAt
+      });
       throw error;
     }
 
     console.error(`[doc-sync] unexpected error for ${ecbNumber}:`, error.stack || error.message);
+    await logSyncRun({
+      mandantEcb: ecbNumber,
+      jobType: SYNC_JOB_TYPE,
+      status: "failed",
+      errorCode: "UNEXPECTED",
+      errorDetail: error.message,
+      startedAt
+    });
     throw error;
   }
 }
