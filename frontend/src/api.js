@@ -97,6 +97,33 @@ async function resetPassword({ token, password }) {
   return data;
 }
 
+async function verifyEmail(token) {
+  const response = await fetch(apiUrl("/api/auth/verify-email"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Verification impossible");
+  }
+  return data;
+}
+
+async function resendVerificationEmail() {
+  const response = await fetch(apiUrl("/api/auth/resend-verification"), {
+    method: "POST",
+    headers: withAuthHeaders()
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Envoi impossible");
+  }
+  return data;
+}
+
 async function fetchCurrentUser() {
   const response = await fetch(apiUrl("/api/auth/me"), {
     headers: withAuthHeaders()
@@ -345,4 +372,5 @@ async function inviteCabinetMember(email) {
 export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, changeSubscriptionPlan, createPortalSession };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
 export { requestPasswordReset, resetPassword };
+export { verifyEmail, resendVerificationEmail };
 export { fetchCabinetMembers, inviteCabinetMember };

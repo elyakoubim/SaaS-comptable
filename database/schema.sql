@@ -233,3 +233,22 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_accountant ON password_reset_tokens (accountant_id);
+
+-- Verification d'email a l'inscription (28/09/2026) : meme raisonnement que
+-- password_reset_tokens (token stocke hashe, usage unique, perissable). Ne
+-- bloque pas la connexion - un compte non verifie reste utilisable, seul le
+-- champ email_verified_at manque - pour ne pas enfermer un comptable hors de
+-- son compte si l'email n'arrive jamais (spam, faute de frappe corrigee plus
+-- tard, etc). C'est au frontend de relancer la verification si besoin.
+ALTER TABLE accountants ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  accountant_id UUID NOT NULL REFERENCES accountants(id),
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_accountant ON email_verification_tokens (accountant_id);

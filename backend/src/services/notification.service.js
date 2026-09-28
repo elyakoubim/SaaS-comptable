@@ -117,4 +117,46 @@ async function sendPasswordResetEmail({ to, resetUrl }) {
   }
 }
 
-export { sendDigestEmail, renderDigestHtml, sendPasswordResetEmail, NotificationUnavailableError };
+function renderEmailVerificationHtml({ verifyUrl }) {
+  return `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;">
+      <h1 style="font-size:18px;color:#111827;">Confirmez votre adresse email</h1>
+      <p style="font-size:14px;color:#4b5563;">
+        Bienvenue sur Vatu. Confirmez votre adresse email pour finaliser votre inscription.
+        Ce lien est valable 24 heures et ne peut servir qu'une seule fois.
+      </p>
+      <p style="margin-top:20px;">
+        <a href="${escapeHtml(verifyUrl)}" style="display:inline-block;padding:10px 16px;background:#059669;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Confirmer mon email</a>
+      </p>
+      <p style="margin-top:20px;font-size:12px;color:#9ca3af;">
+        Si vous n'etes pas a l'origine de cette inscription, ignorez simplement cet email.
+      </p>
+    </div>`;
+}
+
+async function sendVerificationEmail({ to, verifyUrl }) {
+  if (!resendClient) {
+    throw new NotificationUnavailableError("RESEND_API_KEY non configure");
+  }
+
+  const html = renderEmailVerificationHtml({ verifyUrl });
+
+  const { error } = await resendClient.emails.send({
+    from: fromAddress,
+    to,
+    subject: "Vatu — Confirmez votre adresse email",
+    html
+  });
+
+  if (error) {
+    throw new Error(`Resend a refuse l'envoi: ${error.message || JSON.stringify(error)}`);
+  }
+}
+
+export {
+  sendDigestEmail,
+  renderDigestHtml,
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+  NotificationUnavailableError
+};

@@ -33,6 +33,7 @@ async function requireAuth(req, res, next) {
       role: accountant.role,
       email: accountant.email,
       fullName: accountant.full_name,
+      emailVerified: Boolean(accountant.email_verified_at),
       subscriptionPlan: cabinet.subscription_plan,
       subscriptionStatus: cabinet.subscription_status,
       trialEnd: cabinet.trial_end

@@ -6,13 +6,16 @@ import {
   loginRateLimiter,
   registerRateLimiter,
   forgotPasswordRateLimiter,
-  resetPasswordRateLimiter
+  resetPasswordRateLimiter,
+  resendVerificationRateLimiter,
+  verifyEmailRateLimiter
 } from "../middleware/rateLimit.middleware.js";
 import {
   createAccountant,
   findAccountantByEmail,
   findAccountantById,
-  updateAccountantPassword
+  updateAccountantPassword,
+  markAccountantEmailVerified
 } from "../repositories/accountant.repository.js";
 import {
   createCabinet,
@@ -25,15 +28,52 @@ import {
   markPasswordResetTokenUsed,
   invalidatePendingTokens
 } from "../repositories/passwordReset.repository.js";
-import { sendPasswordResetEmail, NotificationUnavailableError } from "../services/notification.service.js";
+import {
+  createEmailVerificationToken,
+  findValidEmailVerificationToken,
+  markEmailVerificationTokenUsed,
+  invalidatePendingEmailVerificationTokens
+} from "../repositories/emailVerification.repository.js";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+  NotificationUnavailableError
+} from "../services/notification.service.js";
 import { hashPassword, signSessionToken, verifyPassword } from "../utils/authCrypto.js";
 
 const authRouter = Router();
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
+// Primitive de hash generique (SHA-256, pas de sel : usage a usage unique et
+// duree de vie courte, meme raisonnement que pour le reset de mot de passe).
+// Reutilisee pour les deux types de token, reset et verification d'email.
 function hashResetToken(rawToken) {
   return createHash("sha256").update(String(rawToken || "")).digest("hex");
+}
+
+async function issueEmailVerification(accountant) {
+  await invalidatePendingEmailVerificationTokens(accountant.id);
+
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = hashResetToken(rawToken);
+  const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+
+  await createEmailVerificationToken({ accountantId: accountant.id, tokenHash, expiresAt });
+
+  const frontendUrl = (process.env.FRONTEND_URL || "https://app.vatu.be").replace(/\/$/, "");
+  const verifyUrl = `${frontendUrl}/verify-email?token=${rawToken}`;
+
+  try {
+    await sendVerificationEmail({ to: accountant.email, verifyUrl });
+  } catch (sendError) {
+    if (!(sendError instanceof NotificationUnavailableError)) {
+      throw sendError;
+    }
+    // RESEND_API_KEY absent (environnement local/test) : meme comportement
+    // tolerant que pour le reset de mot de passe, on ne bloque pas le flux.
+  }
 }
 
 function toAuthErrorMessage(error, fallbackMessage) {
@@ -97,6 +137,12 @@ authRouter.post("/register", registerRateLimiter, async (req, res) => {
       await markInvitationAccepted(invitation.id);
     }
 
+    // Envoi tolerant : un souci d'email ne doit pas faire echouer
+    // l'inscription elle-meme (meme raisonnement que forgot-password).
+    await issueEmailVerification(created).catch((emailError) => {
+      console.warn("Email verification send warning:", emailError.message || emailError);
+    });
+
     const token = signSessionToken({
       accountantId: created.id,
       email: created.email,
@@ -113,7 +159,8 @@ authRouter.post("/register", registerRateLimiter, async (req, res) => {
         id: created.id,
         email: created.email,
         fullName: created.full_name,
-        role: created.role
+        role: created.role,
+        emailVerified: false
       }
     });
   } catch (error) {
@@ -151,7 +198,8 @@ authRouter.post("/login", loginRateLimiter, async (req, res) => {
         id: accountant.id,
         email: accountant.email,
         fullName: accountant.full_name,
-        role: accountant.role
+        role: accountant.role,
+        emailVerified: Boolean(accountant.email_verified_at)
       }
     });
   } catch (error) {
@@ -241,11 +289,60 @@ authRouter.post("/reset-password", resetPasswordRateLimiter, async (req, res) =>
         id: accountant.id,
         email: accountant.email,
         fullName: accountant.full_name,
-        role: accountant.role
+        role: accountant.role,
+        emailVerified: Boolean(accountant.email_verified_at)
       }
     });
   } catch (error) {
     return res.status(500).json({ message: toAuthErrorMessage(error, "Password reset failed") });
+  }
+});
+
+authRouter.post("/verify-email", verifyEmailRateLimiter, async (req, res) => {
+  try {
+    const { token } = req.body || {};
+    if (!token) {
+      return res.status(400).json({ message: "token is required" });
+    }
+
+    const tokenHash = hashResetToken(String(token));
+    const verificationToken = await findValidEmailVerificationToken(tokenHash);
+    if (!verificationToken) {
+      return res.status(400).json({ message: "Lien de verification invalide ou expire" });
+    }
+
+    const accountant = await findAccountantById(verificationToken.accountant_id);
+    if (!accountant) {
+      return res.status(400).json({ message: "Lien de verification invalide ou expire" });
+    }
+
+    await markAccountantEmailVerified(accountant.id);
+    await markEmailVerificationTokenUsed(verificationToken.id);
+
+    return res.json({ message: "Adresse email confirmee." });
+  } catch (error) {
+    return res.status(500).json({ message: toAuthErrorMessage(error, "Email verification failed") });
+  }
+});
+
+// Authentifie (contrairement a forgot-password) : pas de risque d'enumeration
+// d'emails ici, la cible est deja le compte du demandeur.
+authRouter.post("/resend-verification", requireAuth, resendVerificationRateLimiter, async (req, res) => {
+  try {
+    const accountant = await findAccountantById(req.auth.accountantId);
+    if (!accountant) {
+      return res.status(404).json({ message: "Compte introuvable" });
+    }
+
+    if (accountant.email_verified_at) {
+      return res.json({ message: "Cette adresse email est deja confirmee." });
+    }
+
+    await issueEmailVerification(accountant);
+
+    return res.json({ message: "Un nouvel email de confirmation vient d'etre envoye." });
+  } catch (error) {
+    return res.status(500).json({ message: toAuthErrorMessage(error, "Resend verification failed") });
   }
 });
 

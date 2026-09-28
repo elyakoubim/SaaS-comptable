@@ -8,7 +8,9 @@ import {
   logout,
   registerAccount,
   requestPasswordReset,
-  resetPassword
+  resetPassword,
+  verifyEmail,
+  resendVerificationEmail
 } from "./api";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { ConnectMandantPage } from "./pages/ConnectMandantPage.jsx";
@@ -20,6 +22,7 @@ import { BillingResultPage } from "./pages/BillingResultPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage.jsx";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage.jsx";
 import { DemoPage } from "./pages/DemoPage.jsx";
 import { TeamPage } from "./pages/TeamPage.jsx";
 
@@ -59,7 +62,28 @@ function VatuMark() {
   );
 }
 
-function AppShell({ children, isAuthenticated, currentUser, onLogout }) {
+function EmailVerificationBanner({ isSending, sendError, sendSuccess, onResend }) {
+  return (
+    <div className="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <span>
+          {sendSuccess || "Confirmez votre adresse email pour securiser votre compte."}
+          {sendError && <span className="ml-2 text-danger">{sendError}</span>}
+        </span>
+        <button
+          className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-soft transition hover:bg-amber-100 disabled:opacity-60"
+          disabled={isSending}
+          onClick={onResend}
+          type="button"
+        >
+          {isSending ? "Envoi..." : "Renvoyer l'email"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerificationBanner }) {
   const location = useLocation();
   const userLabel = currentUser?.fullName || currentUser?.email || "";
 
@@ -130,6 +154,8 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout }) {
         </div>
       </header>
 
+      {emailVerificationBanner}
+
       <main className="mx-auto w-full max-w-7xl animate-rise px-4 pb-12 pt-6 sm:px-6 lg:px-8">
         {children}
       </main>
@@ -162,6 +188,11 @@ export default function App() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [resetPasswordError, setResetPasswordError] = useState("");
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState("");
+  const [verifyEmailStatus, setVerifyEmailStatus] = useState("idle");
+  const [verifyEmailMessage, setVerifyEmailMessage] = useState("");
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [resendVerificationError, setResendVerificationError] = useState("");
+  const [resendVerificationSuccess, setResendVerificationSuccess] = useState("");
 
   useEffect(() => {
     async function initSession() {
@@ -237,7 +268,7 @@ export default function App() {
       setCurrentUser(payload.user || null);
       const redirected = await redirectToRequestedCheckout(payload.user);
       if (!redirected) {
-        setRegisterSuccess("Inscription reussie. Session ouverte.");
+        setRegisterSuccess("Inscription reussie. Verifiez votre boite mail pour confirmer votre adresse.");
       }
     } catch (error) {
       setRegisterError(error.message || "Inscription impossible");
@@ -277,6 +308,41 @@ export default function App() {
     }
   }
 
+  async function handleVerifyEmail({ token }) {
+    try {
+      setVerifyEmailStatus("verifying");
+      const payload = await verifyEmail(token);
+      setVerifyEmailMessage(payload.message || "Adresse email confirmee.");
+      setVerifyEmailStatus("success");
+      // Le compte peut avoir ete verifie depuis un autre onglet que celui de
+      // la session active : on rafraichit currentUser pour faire disparaitre
+      // la banniere de rappel sans attendre un rechargement complet.
+      try {
+        const me = await fetchCurrentUser();
+        setCurrentUser(me.user || null);
+      } catch (_error) {
+        // Pas grave si pas connecte ici (ex: verification depuis un autre appareil).
+      }
+    } catch (error) {
+      setVerifyEmailMessage(error.message || "Lien de confirmation invalide ou expire");
+      setVerifyEmailStatus("error");
+    }
+  }
+
+  async function handleResendVerification() {
+    try {
+      setIsResendingVerification(true);
+      setResendVerificationError("");
+      setResendVerificationSuccess("");
+      const payload = await resendVerificationEmail();
+      setResendVerificationSuccess(payload.message || "Email envoye.");
+    } catch (error) {
+      setResendVerificationError(error.message || "Envoi impossible");
+    } finally {
+      setIsResendingVerification(false);
+    }
+  }
+
   async function handleLogout() {
     await logout();
     setCurrentUser(null);
@@ -293,6 +359,7 @@ export default function App() {
   }
 
   const isAuthenticated = Boolean(currentUser?.id || currentUser?.accountantId);
+  const showEmailVerificationBanner = isAuthenticated && currentUser?.emailVerified === false;
 
   const requestedParams = new URLSearchParams(location.search);
   const requestedPlan = requestedParams.get("plan");
@@ -306,7 +373,21 @@ export default function App() {
       : "";
 
   return (
-    <AppShell currentUser={currentUser} isAuthenticated={isAuthenticated} onLogout={handleLogout}>
+    <AppShell
+      currentUser={currentUser}
+      emailVerificationBanner={
+        showEmailVerificationBanner ? (
+          <EmailVerificationBanner
+            isSending={isResendingVerification}
+            sendError={resendVerificationError}
+            sendSuccess={resendVerificationSuccess}
+            onResend={handleResendVerification}
+          />
+        ) : null
+      }
+      isAuthenticated={isAuthenticated}
+      onLogout={handleLogout}
+    >
         <Routes>
           <Route
             path="/login"
@@ -356,6 +437,16 @@ export default function App() {
                   onSubmit={handleResetPassword}
                 />
               )
+            }
+          />
+          <Route
+            path="/verify-email"
+            element={
+              <VerifyEmailPage
+                message={verifyEmailMessage}
+                status={verifyEmailStatus}
+                onVerify={handleVerifyEmail}
+              />
             }
           />
           <Route path="/" element={isAuthenticated ? <DashboardPage /> : <Navigate replace to="/login" />} />

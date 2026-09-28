@@ -64,7 +64,7 @@ async function createAccountant({ email, passwordHash, fullName, cabinetId, role
 
 async function findAccountantByEmail(email) {
   const query = `
-    SELECT id, email, password_hash, full_name, created_at, cabinet_id, role
+    SELECT id, email, password_hash, full_name, created_at, cabinet_id, role, email_verified_at
     FROM accountants
     WHERE email = $1
     LIMIT 1
@@ -76,7 +76,7 @@ async function findAccountantByEmail(email) {
 
 async function findAccountantById(accountantId) {
   const query = `
-    SELECT id, email, password_hash, full_name, created_at, cabinet_id, role
+    SELECT id, email, password_hash, full_name, created_at, cabinet_id, role, email_verified_at
     FROM accountants
     WHERE id = $1::uuid
     LIMIT 1
@@ -151,6 +151,17 @@ async function updateAccountantPassword(accountantId, passwordHash) {
   return result.rows[0] || null;
 }
 
+async function markAccountantEmailVerified(accountantId) {
+  const query = `
+    UPDATE accountants
+    SET email_verified_at = NOW()
+    WHERE id = $1::uuid
+    RETURNING id, email, email_verified_at
+  `;
+  const result = await db.query(query, [accountantId]);
+  return result.rows[0] || null;
+}
+
 export {
   ensureDemoAccount,
   createAccountant,
@@ -159,5 +170,6 @@ export {
   findAccountantByStripeCustomerId,
   setStripeCustomerId,
   updateSubscriptionState,
-  updateAccountantPassword
+  updateAccountantPassword,
+  markAccountantEmailVerified
 };
