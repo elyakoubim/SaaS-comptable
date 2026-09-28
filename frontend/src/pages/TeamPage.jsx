@@ -27,6 +27,11 @@ function TeamPage({ currentUser }) {
   const [copied, setCopied] = useState(false);
 
   const isOwner = currentUser?.role === "owner";
+  // Vatu Connect est un abonnement a un seul utilisateur : l'invitation est
+  // reservee a Vatu Pro (le backend refuse en 402 de toute facon).
+  const canInvite =
+    currentUser?.subscriptionPlan === "pro" &&
+    ["trialing", "active"].includes(currentUser?.subscriptionStatus);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,17 +133,30 @@ function TeamPage({ currentUser }) {
             mêmes dossiers, mais pas à la facturation.
           </p>
 
+          {!canInvite && (
+            <div className="mb-3 flex flex-col gap-2 rounded-xl border border-accent-line bg-accent-soft px-3 py-2.5 text-sm text-accent-strong sm:flex-row sm:items-center sm:justify-between">
+              <span>Vatu Connect est limité à un utilisateur. Passez à Vatu Pro pour inviter votre équipe.</span>
+              <a
+                className="shrink-0 rounded-lg border border-accent-line bg-white px-3 py-1.5 text-xs font-semibold text-accent-strong hover:bg-accent-soft"
+                href="/billing"
+              >
+                Voir Vatu Pro
+              </a>
+            </div>
+          )}
+
           <form className="flex flex-col gap-2 sm:flex-row" onSubmit={onInviteSubmit}>
             <input
               className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent sm:flex-1"
               placeholder="collegue@votre-fiduciaire.be"
               type="email"
               value={inviteEmail}
+              disabled={!canInvite}
               onChange={(event) => setInviteEmail(event.target.value)}
             />
             <button
               className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-strong disabled:opacity-70"
-              disabled={isInviting || !inviteEmail}
+              disabled={!canInvite || isInviting || !inviteEmail}
               type="submit"
             >
               {isInviting ? "Envoi..." : "Générer le lien"}

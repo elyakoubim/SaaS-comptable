@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
+import { requireMultiUserPlan } from "../middleware/requirePlan.middleware.js";
 import { listMembers, createInvitation } from "../repositories/cabinet.repository.js";
 
 const cabinetRouter = Router();
@@ -29,8 +30,9 @@ cabinetRouter.get("/members", requireAuth, async (req, res) => {
 });
 
 // Reserve au owner : seul le titulaire du cabinet invite de nouveaux membres
-// (decision du 24/09/2026 - un seul role gestionnaire).
-cabinetRouter.post("/invite", requireAuth, async (req, res) => {
+// (decision du 24/09/2026 - un seul role gestionnaire), et reserve a Vatu Pro :
+// Connect est un abonnement a un seul utilisateur.
+cabinetRouter.post("/invite", requireAuth, requireMultiUserPlan, async (req, res) => {
   try {
     if (req.auth.role !== "owner") {
       return res.status(403).json({ message: "Reserve au titulaire du cabinet" });

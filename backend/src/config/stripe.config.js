@@ -10,7 +10,7 @@ const stripe = new Stripe(secretKey, {
   apiVersion: "2024-06-20"
 });
 
-// "connect" = Vatu Connect (base, BYO-AI via MCP), "pro" = Vatu Pro (+ lecture IA par Vatu).
+// "connect" = Vatu Connect (centralisation seule, 1 utilisateur, sans IA), "pro" = Vatu Pro (+ lecture IA par Vatu, multi-utilisateurs).
 const priceIds = {
   connect: {
     monthly: process.env.STRIPE_PRICE_CONNECT_MONTHLY || "",

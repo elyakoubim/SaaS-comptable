@@ -8,12 +8,15 @@ const PLANS = [
     name: "Vatu Connect",
     monthly: 19,
     annual: 16,
-    description: "Centralisation MyMinfin, connectez votre propre IA via MCP.",
+    description: "Centralisation MyMinfin : tous vos dossiers au meme endroit, rafraichis chaque jour.",
     features: [
+      "1 utilisateur",
       "Tous les documents MyMinfin centralises",
+      "Tous vos dossiers, au meme endroit",
       "Rafraichi chaque jour",
       "Notification « nouveau document »",
-      "Branchez votre IA via MCP (Claude, ChatGPT)"
+      "Connexion officielle et securisee",
+      "Sans IA : Vatu ne traite jamais le contenu"
     ]
   },
   {
@@ -24,9 +27,12 @@ const PLANS = [
     description: "Tout Vatu Connect, plus la lecture de vos documents par l'IA de Vatu.",
     features: [
       "Tout Vatu Connect",
+      "Plusieurs utilisateurs",
       "Lecture IA par Vatu",
       "Extraction des echeances & montants",
-      "Alertes structurees, cout des tokens inclus"
+      "Alertes structurees",
+      "Preparation d'actions (brouillons)",
+      "Cout des tokens IA inclus"
     ]
   }
 ];
