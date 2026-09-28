@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { createCheckoutSession, changeSubscriptionPlan, createPortalSession } from "../api";
+import { createCheckoutSession, changeSubscriptionPlan, createPortalSession, deleteAccount } from "../api";
 
 const PLANS = [
   {
@@ -37,7 +37,7 @@ const PLANS = [
   }
 ];
 
-function BillingPage({ currentUser }) {
+function BillingPage({ currentUser, onAccountDeleted }) {
   const [searchParams] = useSearchParams();
   const recommendedPlan = ["connect", "pro"].includes(searchParams.get("plan"))
     ? searchParams.get("plan")
@@ -47,10 +47,15 @@ function BillingPage({ currentUser }) {
   const [loadingPlan, setLoadingPlan] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showDeleteForm, setShowDeleteForm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const activePlan = currentUser?.subscriptionPlan || null;
   const activeStatus = currentUser?.subscriptionStatus || null;
   const hasActiveSubscription = Boolean(activePlan) && activeStatus !== "canceled";
+  const isOwner = currentUser?.role === "owner";
 
   async function handleSubscribe(planKey) {
     try {
@@ -81,6 +86,20 @@ function BillingPage({ currentUser }) {
     } catch (err) {
       setError(err.message || "Impossible d'ouvrir le portail de facturation");
       setPortalLoading(false);
+    }
+  }
+
+  async function onDeleteSubmit(event) {
+    event.preventDefault();
+    try {
+      setIsDeleting(true);
+      setDeleteError("");
+      await deleteAccount(deletePassword);
+      onAccountDeleted?.();
+    } catch (err) {
+      setDeleteError(err.message || "Suppression impossible");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -181,6 +200,63 @@ function BillingPage({ currentUser }) {
           );
         })}
       </div>
+
+      <article className="mt-8 rounded-2xl border border-red-200 bg-red-50/40 p-6 shadow-floating">
+        <h2 className="mb-1 text-sm font-semibold text-danger">Zone dangereuse</h2>
+        <p className="mb-3 text-sm text-gray-600">
+          {isOwner
+            ? "Supprime definitivement votre compte ET tout le cabinet : mandats, documents, alertes et abonnement. Action irreversible pour toute l'equipe."
+            : "Supprime definitivement votre compte. Les mandats et alertes du cabinet restent accessibles au reste de l'equipe."}
+        </p>
+
+        {!showDeleteForm && (
+          <button
+            className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-semibold text-danger shadow-soft transition hover:bg-red-50"
+            onClick={() => setShowDeleteForm(true)}
+            type="button"
+          >
+            Supprimer mon compte
+          </button>
+        )}
+
+        {showDeleteForm && (
+          <form className="flex flex-col gap-2 sm:flex-row" onSubmit={onDeleteSubmit}>
+            <input
+              autoComplete="current-password"
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-danger sm:flex-1"
+              placeholder="Confirmez avec votre mot de passe"
+              type="password"
+              value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+            />
+            <button
+              className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:opacity-90 disabled:opacity-70"
+              disabled={isDeleting || !deletePassword}
+              type="submit"
+            >
+              {isDeleting ? "Suppression..." : "Confirmer la suppression"}
+            </button>
+            <button
+              className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-muted shadow-soft transition hover:bg-gray-50"
+              disabled={isDeleting}
+              onClick={() => {
+                setShowDeleteForm(false);
+                setDeletePassword("");
+                setDeleteError("");
+              }}
+              type="button"
+            >
+              Annuler
+            </button>
+          </form>
+        )}
+
+        {deleteError && (
+          <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">
+            {deleteError}
+          </p>
+        )}
+      </article>
     </section>
   );
 }

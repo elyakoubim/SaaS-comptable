@@ -464,7 +464,13 @@ export default function App() {
           <Route path="/analysis" element={isAuthenticated ? <AnalysisPage /> : <Navigate replace to="/login" />} />
           <Route
             path="/billing"
-            element={isAuthenticated ? <BillingPage currentUser={currentUser} /> : <Navigate replace to="/login" />}
+            element={
+              isAuthenticated ? (
+                <BillingPage currentUser={currentUser} onAccountDeleted={handleAccountDeleted} />
+              ) : (
+                <Navigate replace to="/login" />
+              )
+            }
           />
           <Route
             path="/billing/success"
@@ -486,7 +492,7 @@ export default function App() {
             path="/team"
             element={
               isAuthenticated ? (
-                <TeamPage currentUser={currentUser} onAccountDeleted={handleAccountDeleted} />
+                <TeamPage currentUser={currentUser} />
               ) : (
                 <Navigate replace to="/login" />
               )
