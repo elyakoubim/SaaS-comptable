@@ -1,16 +1,40 @@
+import { randomBytes, createHash } from "node:crypto";
 import { Router } from "express";
 import { authConfig } from "../config/auth.config.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { loginRateLimiter, registerRateLimiter } from "../middleware/rateLimit.middleware.js";
-import { createAccountant, findAccountantByEmail } from "../repositories/accountant.repository.js";
+import {
+  loginRateLimiter,
+  registerRateLimiter,
+  forgotPasswordRateLimiter,
+  resetPasswordRateLimiter
+} from "../middleware/rateLimit.middleware.js";
+import {
+  createAccountant,
+  findAccountantByEmail,
+  findAccountantById,
+  updateAccountantPassword
+} from "../repositories/accountant.repository.js";
 import {
   createCabinet,
   findInvitationByToken,
   markInvitationAccepted
 } from "../repositories/cabinet.repository.js";
+import {
+  createPasswordResetToken,
+  findValidPasswordResetToken,
+  markPasswordResetTokenUsed,
+  invalidatePendingTokens
+} from "../repositories/passwordReset.repository.js";
+import { sendPasswordResetEmail, NotificationUnavailableError } from "../services/notification.service.js";
 import { hashPassword, signSessionToken, verifyPassword } from "../utils/authCrypto.js";
 
 const authRouter = Router();
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
+
+function hashResetToken(rawToken) {
+  return createHash("sha256").update(String(rawToken || "")).digest("hex");
+}
 
 function toAuthErrorMessage(error, fallbackMessage) {
   const message = String(error?.message || "").trim();
@@ -132,6 +156,96 @@ authRouter.post("/login", loginRateLimiter, async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ message: toAuthErrorMessage(error, "Login failed") });
+  }
+});
+
+// Reponse volontairement identique que le compte existe ou non, pour ne pas
+// laisser deviner quels emails sont enregistres (enumeration d'utilisateurs).
+const FORGOT_PASSWORD_GENERIC_MESSAGE =
+  "Si un compte existe pour cette adresse, un email de reinitialisation vient d'etre envoye.";
+
+authRouter.post("/forgot-password", forgotPasswordRateLimiter, async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ message: "email is required" });
+    }
+
+    const accountant = await findAccountantByEmail(String(email).toLowerCase());
+
+    if (accountant) {
+      await invalidatePendingTokens(accountant.id);
+
+      const rawToken = randomBytes(32).toString("hex");
+      const tokenHash = hashResetToken(rawToken);
+      const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+
+      await createPasswordResetToken({ accountantId: accountant.id, tokenHash, expiresAt });
+
+      const frontendUrl = (process.env.FRONTEND_URL || "https://app.vatu.be").replace(/\/$/, "");
+      const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+      try {
+        await sendPasswordResetEmail({ to: accountant.email, resetUrl });
+      } catch (sendError) {
+        if (!(sendError instanceof NotificationUnavailableError)) {
+          throw sendError;
+        }
+        // RESEND_API_KEY absent (environnement local/test) : on ne fait pas
+        // echouer la requete pour autant, le comportement reste silencieux
+        // cote client comme en production.
+      }
+    }
+
+    return res.json({ message: FORGOT_PASSWORD_GENERIC_MESSAGE });
+  } catch (error) {
+    return res.status(500).json({ message: toAuthErrorMessage(error, "Password reset request failed") });
+  }
+});
+
+authRouter.post("/reset-password", resetPasswordRateLimiter, async (req, res) => {
+  try {
+    const { token, password } = req.body || {};
+    if (!token || !password) {
+      return res.status(400).json({ message: "token and password are required" });
+    }
+
+    const tokenHash = hashResetToken(String(token));
+    const resetToken = await findValidPasswordResetToken(tokenHash);
+    if (!resetToken) {
+      return res.status(400).json({ message: "Lien de reinitialisation invalide ou expire" });
+    }
+
+    const accountant = await findAccountantById(resetToken.accountant_id);
+    if (!accountant) {
+      return res.status(400).json({ message: "Lien de reinitialisation invalide ou expire" });
+    }
+
+    const passwordHash = await hashPassword(String(password), authConfig.bcryptRounds);
+    await updateAccountantPassword(accountant.id, passwordHash);
+    await markPasswordResetTokenUsed(resetToken.id);
+
+    const sessionToken = signSessionToken({
+      accountantId: accountant.id,
+      email: accountant.email,
+      fullName: accountant.full_name,
+      secret: authConfig.jwtSecret,
+      expiresInSeconds: authConfig.tokenTtlSeconds,
+      issuer: authConfig.tokenIssuer
+    });
+
+    return res.json({
+      token: sessionToken,
+      expiresInSeconds: authConfig.tokenTtlSeconds,
+      user: {
+        id: accountant.id,
+        email: accountant.email,
+        fullName: accountant.full_name,
+        role: accountant.role
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ message: toAuthErrorMessage(error, "Password reset failed") });
   }
 });
 

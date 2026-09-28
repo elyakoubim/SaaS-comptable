@@ -217,3 +217,19 @@ CREATE INDEX IF NOT EXISTS idx_cabinet_invitations_cabinet_id ON cabinet_invitat
 -- envoi. DEFAULT NOW() evite qu'un cabinet deja existant recoive d'un coup
 -- tout son historique au premier envoi apres deploiement de cette migration.
 ALTER TABLE cabinets ADD COLUMN IF NOT EXISTS last_digest_sent_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Mot de passe oublie (28/09/2026) : on ne stocke jamais le token en clair,
+-- seulement son hash SHA-256 - meme raisonnement que access_token_encrypted
+-- pour les mandants, un vol de la table ne doit pas suffire a reinitialiser
+-- un compte. used_at rend le token a usage unique ; expires_at le rend
+-- perissable (1h) independamment du "used".
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  accountant_id UUID NOT NULL REFERENCES accountants(id),
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_accountant ON password_reset_tokens (accountant_id);

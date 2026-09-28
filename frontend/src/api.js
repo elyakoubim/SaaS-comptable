@@ -65,6 +65,38 @@ async function registerAccount({ email, password, fullName, inviteToken }) {
   return data;
 }
 
+async function requestPasswordReset(email) {
+  const response = await fetch(apiUrl("/api/auth/forgot-password"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Demande impossible");
+  }
+  return data;
+}
+
+async function resetPassword({ token, password }) {
+  const response = await fetch(apiUrl("/api/auth/reset-password"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Reinitialisation impossible");
+  }
+
+  if (data.token) {
+    setAuthToken(data.token);
+  }
+  return data;
+}
+
 async function fetchCurrentUser() {
   const response = await fetch(apiUrl("/api/auth/me"), {
     headers: withAuthHeaders()
@@ -312,4 +344,5 @@ async function inviteCabinetMember(email) {
 
 export { startFpsConnection, fetchMandants, fetchAlerts, fetchPortfolio, acknowledgeAlert, forceSync, fetchSignals, fetchDocumentBlob, requestAlertExtraction, createCheckoutSession, changeSubscriptionPlan, createPortalSession };
 export { loginWithPassword, registerAccount, fetchCurrentUser, logout, getAuthToken, clearAuthToken };
+export { requestPasswordReset, resetPassword };
 export { fetchCabinetMembers, inviteCabinetMember };

@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { createCheckoutSession, fetchCurrentUser, getAuthToken, loginWithPassword, logout, registerAccount } from "./api";
+import {
+  createCheckoutSession,
+  fetchCurrentUser,
+  getAuthToken,
+  loginWithPassword,
+  logout,
+  registerAccount,
+  requestPasswordReset,
+  resetPassword
+} from "./api";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { ConnectMandantPage } from "./pages/ConnectMandantPage.jsx";
 import { ConnectResultPage } from "./pages/ConnectResultPage.jsx";
@@ -9,6 +18,8 @@ import { AnalysisPage } from "./pages/AnalysisPage.jsx";
 import { BillingPage } from "./pages/BillingPage.jsx";
 import { BillingResultPage } from "./pages/BillingResultPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage.jsx";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage.jsx";
 import { DemoPage } from "./pages/DemoPage.jsx";
 import { TeamPage } from "./pages/TeamPage.jsx";
 
@@ -145,6 +156,12 @@ export default function App() {
   const [registerError, setRegisterError] = useState("");
   const [registerSuccess, setRegisterSuccess] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [isRequestingReset, setIsRequestingReset] = useState(false);
+  const [forgotPasswordError, setForgotPasswordError] = useState("");
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState("");
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState("");
 
   useEffect(() => {
     async function initSession() {
@@ -229,6 +246,37 @@ export default function App() {
     }
   }
 
+  async function handleForgotPassword({ email }) {
+    try {
+      setIsRequestingReset(true);
+      setForgotPasswordError("");
+      setForgotPasswordSuccess("");
+      const payload = await requestPasswordReset(email);
+      setForgotPasswordSuccess(
+        payload.message || "Si un compte existe pour cette adresse, un email vient d'etre envoye."
+      );
+    } catch (error) {
+      setForgotPasswordError(error.message || "Demande impossible");
+    } finally {
+      setIsRequestingReset(false);
+    }
+  }
+
+  async function handleResetPassword({ token, password }) {
+    try {
+      setIsResettingPassword(true);
+      setResetPasswordError("");
+      setResetPasswordSuccess("");
+      const payload = await resetPassword({ token, password });
+      setCurrentUser(payload.user || null);
+      setResetPasswordSuccess("Mot de passe mis a jour. Redirection...");
+    } catch (error) {
+      setResetPasswordError(error.message || "Reinitialisation impossible");
+    } finally {
+      setIsResettingPassword(false);
+    }
+  }
+
   async function handleLogout() {
     await logout();
     setCurrentUser(null);
@@ -276,6 +324,36 @@ export default function App() {
                   registerSuccess={registerSuccess}
                   onLogin={handleLogin}
                   onRegister={handleRegister}
+                />
+              )
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              isAuthenticated ? (
+                <Navigate replace to="/" />
+              ) : (
+                <ForgotPasswordPage
+                  error={forgotPasswordError}
+                  isSubmitting={isRequestingReset}
+                  successMessage={forgotPasswordSuccess}
+                  onSubmit={handleForgotPassword}
+                />
+              )
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              isAuthenticated ? (
+                <Navigate replace to="/" />
+              ) : (
+                <ResetPasswordPage
+                  error={resetPasswordError}
+                  isSubmitting={isResettingPassword}
+                  successMessage={resetPasswordSuccess}
+                  onSubmit={handleResetPassword}
                 />
               )
             }

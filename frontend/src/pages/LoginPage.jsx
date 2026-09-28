@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 function LoginPage({
   defaultEmail = "",
@@ -78,6 +78,12 @@ function LoginPage({
           />
 
           {loginError && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{loginError}</p>}
+
+          <div className="text-right">
+            <Link className="text-sm font-medium text-accent hover:text-accent-strong" to="/forgot-password">
+              Mot de passe oublie ?
+            </Link>
+          </div>
 
           <button
             className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-strong disabled:opacity-70"

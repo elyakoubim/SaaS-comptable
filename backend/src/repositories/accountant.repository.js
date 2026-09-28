@@ -140,6 +140,17 @@ async function updateSubscriptionState(
   return result.rows[0] || null;
 }
 
+async function updateAccountantPassword(accountantId, passwordHash) {
+  const query = `
+    UPDATE accountants
+    SET password_hash = $2
+    WHERE id = $1::uuid
+    RETURNING id, email
+  `;
+  const result = await db.query(query, [accountantId, passwordHash]);
+  return result.rows[0] || null;
+}
+
 export {
   ensureDemoAccount,
   createAccountant,
@@ -147,5 +158,6 @@ export {
   findAccountantById,
   findAccountantByStripeCustomerId,
   setStripeCustomerId,
-  updateSubscriptionState
+  updateSubscriptionState,
+  updateAccountantPassword
 };

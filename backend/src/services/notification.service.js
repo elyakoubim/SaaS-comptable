@@ -80,4 +80,41 @@ async function sendDigestEmail({ to, cabinetName, alerts }) {
   }
 }
 
-export { sendDigestEmail, renderDigestHtml, NotificationUnavailableError };
+function renderPasswordResetHtml({ resetUrl }) {
+  return `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;">
+      <h1 style="font-size:18px;color:#111827;">Reinitialiser votre mot de passe</h1>
+      <p style="font-size:14px;color:#4b5563;">
+        Une demande de reinitialisation de mot de passe a ete faite pour votre compte Vatu.
+        Ce lien est valable 1 heure et ne peut servir qu'une seule fois.
+      </p>
+      <p style="margin-top:20px;">
+        <a href="${escapeHtml(resetUrl)}" style="display:inline-block;padding:10px 16px;background:#059669;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Choisir un nouveau mot de passe</a>
+      </p>
+      <p style="margin-top:20px;font-size:12px;color:#9ca3af;">
+        Si vous n'etes pas a l'origine de cette demande, ignorez simplement cet email :
+        votre mot de passe actuel reste valable.
+      </p>
+    </div>`;
+}
+
+async function sendPasswordResetEmail({ to, resetUrl }) {
+  if (!resendClient) {
+    throw new NotificationUnavailableError("RESEND_API_KEY non configure");
+  }
+
+  const html = renderPasswordResetHtml({ resetUrl });
+
+  const { error } = await resendClient.emails.send({
+    from: fromAddress,
+    to,
+    subject: "Vatu — Reinitialisation de votre mot de passe",
+    html
+  });
+
+  if (error) {
+    throw new Error(`Resend a refuse l'envoi: ${error.message || JSON.stringify(error)}`);
+  }
+}
+
+export { sendDigestEmail, renderDigestHtml, sendPasswordResetEmail, NotificationUnavailableError };

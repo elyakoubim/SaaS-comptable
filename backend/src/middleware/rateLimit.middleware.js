@@ -47,4 +47,28 @@ const registerRateLimiter = buildAuthRateLimiter({
   }
 });
 
-export { loginRateLimiter, registerRateLimiter };
+const forgotPasswordRateLimiter = buildAuthRateLimiter({
+  prefix: "auth_rl_forgot:",
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  messages: {
+    fr: "Trop de demandes de reinitialisation. Reessayez dans une heure.",
+    nl: "Te veel verzoeken om wachtwoordherstel. Probeer het over een uur opnieuw.",
+    de: "Zu viele Anfragen zum Zuruecksetzen des Passworts. Bitte versuchen Sie es in einer Stunde erneut.",
+    en: "Too many password reset requests. Try again in one hour."
+  }
+});
+
+const resetPasswordRateLimiter = buildAuthRateLimiter({
+  prefix: "auth_rl_reset:",
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  messages: {
+    fr: "Trop de tentatives. Reessayez dans 15 minutes.",
+    nl: "Te veel pogingen. Probeer het over 15 minuten opnieuw.",
+    de: "Zu viele Versuche. Bitte versuchen Sie es in 15 Minuten erneut.",
+    en: "Too many attempts. Try again in 15 minutes."
+  }
+});
+
+export { loginRateLimiter, registerRateLimiter, forgotPasswordRateLimiter, resetPasswordRateLimiter };
