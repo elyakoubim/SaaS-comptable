@@ -30,6 +30,36 @@
     cursor: pointer;
     font-size: 13px;
   }
+  #gate {
+    max-width: 360px;
+    margin: 80px auto;
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  #gate h2 { font-size: 16px; margin-top: 0; }
+  #gate input {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  #gate button {
+    width: 100%;
+    padding: 10px;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  #gate-error { color: #ea4335; font-size: 13px; margin-top: 8px; min-height: 18px; }
+  #app { display: none; }
   #stats-panel {
     background: #fff;
     margin: 16px 24px;
@@ -80,6 +110,16 @@
 </style>
 </head>
 <body>
+<div id="gate">
+  <h2>Vatu — Accès protégé</h2>
+  <form id="gate-form">
+    <input id="gate-input" type="password" placeholder="Code d'accès" autocomplete="off" autofocus />
+    <button type="submit">Accéder</button>
+  </form>
+  <div id="gate-error"></div>
+</div>
+
+<div id="app">
 <header>
   <h1>Vatu — Revue de "Lire avec l'IA" (point #21)</h1>
   <div>
@@ -90,21 +130,43 @@
 
 <div id="stats-panel"></div>
 <div id="list"><div id="empty">Chargement...</div></div>
+</div>
 
 <script>
 (function () {
   let secret = sessionStorage.getItem("vatu_admin_secret") || "";
   let showAll = false;
 
-  function ensureSecret() {
-    while (!secret) {
-      secret = window.prompt("Code d'accès admin :") || "";
-    }
-    sessionStorage.setItem("vatu_admin_secret", secret);
+  const gateEl = document.getElementById("gate");
+  const appEl = document.getElementById("app");
+  const gateForm = document.getElementById("gate-form");
+  const gateInput = document.getElementById("gate-input");
+  const gateError = document.getElementById("gate-error");
+
+  function showGate(message) {
+    gateError.textContent = message || "";
+    gateEl.style.display = "block";
+    appEl.style.display = "none";
+    gateInput.value = "";
+    gateInput.focus();
   }
 
+  function showApp() {
+    gateEl.style.display = "none";
+    appEl.style.display = "block";
+  }
+
+  gateForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const value = gateInput.value.trim();
+    if (!value) return;
+    secret = value;
+    sessionStorage.setItem("vatu_admin_secret", secret);
+    showApp();
+    loadList();
+  });
+
   async function api(path, options = {}) {
-    ensureSecret();
     const res = await fetch(path, {
       ...options,
       headers: { ...(options.headers || {}), "X-Admin-Secret": secret, "Content-Type": "application/json" }
@@ -112,8 +174,8 @@
     if (res.status === 401) {
       sessionStorage.removeItem("vatu_admin_secret");
       secret = "";
-      alert("Code invalide, réessayez.");
-      return api(path, options);
+      showGate("Code invalide, réessayez.");
+      throw new Error("Code invalide");
     }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -122,7 +184,7 @@
     return res.json();
   }
 
-  function fieldRow(label, value, current, onPick) {
+  function fieldRow(label, value, current) {
     const row = document.createElement("div");
     row.className = "field-row";
     row.innerHTML =
@@ -131,15 +193,17 @@
       '<div class="choice"></div>';
     const choice = row.querySelector(".choice");
     const yes = document.createElement("button");
+    yes.type = "button";
     yes.textContent = "Correct";
     const no = document.createElement("button");
+    no.type = "button";
     no.textContent = "Faux";
     function refresh() {
       yes.className = current.value === true ? "active-yes" : "";
       no.className = current.value === false ? "active-no" : "";
     }
-    yes.onclick = () => { current.value = true; refresh(); onPick(); };
-    no.onclick = () => { current.value = false; refresh(); onPick(); };
+    yes.onclick = () => { current.value = true; refresh(); };
+    no.onclick = () => { current.value = false; refresh(); };
     refresh();
     choice.appendChild(yes);
     choice.appendChild(no);
@@ -169,9 +233,9 @@
       reference: { value: item.verification ? item.verification.referenceCorrect : null }
     };
 
-    left.appendChild(fieldRow("Montant", item.extraction.montant, state.montant, () => {}));
-    left.appendChild(fieldRow("Échéance", item.extraction.dateEcheance, state.date, () => {}));
-    left.appendChild(fieldRow("Référence", item.extraction.reference, state.reference, () => {}));
+    left.appendChild(fieldRow("Montant", item.extraction.montant, state.montant));
+    left.appendChild(fieldRow("Échéance", item.extraction.dateEcheance, state.date));
+    left.appendChild(fieldRow("Référence", item.extraction.reference, state.reference));
 
     const accrocheRow = document.createElement("div");
     accrocheRow.className = "field-row";
@@ -222,7 +286,9 @@
       listEl.innerHTML = "";
       data.items.forEach((item) => listEl.appendChild(renderCard(item)));
     } catch (err) {
-      listEl.innerHTML = '<div id="empty">Erreur : ' + escapeHtml(err.message) + "</div>";
+      if (appEl.style.display !== "none") {
+        listEl.innerHTML = '<div id="empty">Erreur : ' + escapeHtml(err.message) + "</div>";
+      }
     }
   }
 
@@ -242,8 +308,10 @@
       panel.innerHTML = html;
       panel.style.display = panel.style.display === "block" ? "none" : "block";
     } catch (err) {
-      panel.innerHTML = "Erreur : " + escapeHtml(err.message);
-      panel.style.display = "block";
+      if (appEl.style.display !== "none") {
+        panel.innerHTML = "Erreur : " + escapeHtml(err.message);
+        panel.style.display = "block";
+      }
     }
   }
 
@@ -254,7 +322,12 @@
     loadList();
   };
 
-  loadList();
+  if (secret) {
+    showApp();
+    loadList();
+  } else {
+    showGate();
+  }
 })();
 </script>
 </body>
