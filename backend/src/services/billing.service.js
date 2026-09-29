@@ -1,4 +1,5 @@
 import { stripe, resolvePriceId, resolvePlanFromPriceId } from "../config/stripe.config.js";
+import { isProPlan } from "../config/plans.config.js";
 import {
   setStripeCustomerId,
   updateSubscriptionState
@@ -233,13 +234,15 @@ async function processWebhookEvent(event) {
   }
 }
 
-// Un cabinet a acces a "Lire avec l'IA" seulement sur Vatu Pro, et seulement
-// si l'abonnement est en essai ou actif (pas expire/impaye/annule). Tous les
-// membres du cabinet en beneficient (cf. decision multi-utilisateurs du
-// 24/09/2026) : l'acces ne depend plus du comptable individuel.
+// Un cabinet a acces a "Lire avec l'IA" sur n'importe quel palier Vatu Pro
+// (Starter/Scale/Firm, cf. plans.config.js - seul le plafond de dossiers les
+// distingue, pas l'acces IA), et seulement si l'abonnement est en essai ou
+// actif (pas expire/impaye/annule). Tous les membres du cabinet en
+// beneficient (cf. decision multi-utilisateurs du 24/09/2026) : l'acces ne
+// depend plus du comptable individuel.
 function hasProAccess(cabinet) {
   const activeStatuses = new Set(["trialing", "active"]);
-  return cabinet.subscription_plan === "pro" && activeStatuses.has(cabinet.subscription_status);
+  return isProPlan(cabinet.subscription_plan) && activeStatuses.has(cabinet.subscription_status);
 }
 
 export {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchCabinetMembers, inviteCabinetMember } from "../api";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { isProPlan } from "../plans.js";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -34,7 +35,7 @@ function TeamPage({ currentUser }) {
   // Vatu Connect est un abonnement a un seul utilisateur : l'invitation est
   // reservee a Vatu Pro (le backend refuse en 402 de toute facon).
   const canInvite =
-    currentUser?.subscriptionPlan === "pro" &&
+    isProPlan(currentUser?.subscriptionPlan) &&
     ["trialing", "active"].includes(currentUser?.subscriptionStatus);
 
   useEffect(() => {

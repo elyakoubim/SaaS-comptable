@@ -28,6 +28,7 @@ import { DemoPage } from "./pages/DemoPage.jsx";
 import { TeamPage } from "./pages/TeamPage.jsx";
 import { useLanguage } from "./i18n/LanguageContext.jsx";
 import { translateApiError } from "./i18n/apiErrors.js";
+import { PLAN_KEYS } from "./plans.js";
 
 const navItems = [
   { to: "/", key: "nav.dossiers" },
@@ -209,7 +210,7 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerif
   );
 }
 
-const VALID_PLANS = new Set(["connect", "pro"]);
+const VALID_PLANS = new Set(PLAN_KEYS);
 const VALID_INTERVALS = new Set(["monthly", "annual"]);
 
 export default function App() {

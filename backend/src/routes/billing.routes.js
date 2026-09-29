@@ -2,9 +2,10 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { findCabinetById } from "../repositories/cabinet.repository.js";
 import { createCheckoutSession, changeSubscriptionPlan, createPortalSession } from "../services/billing.service.js";
+import { ALL_PLANS } from "../config/plans.config.js";
 
 const billingRouter = Router();
-const VALID_PLANS = new Set(["connect", "pro"]);
+const VALID_PLANS = ALL_PLANS;
 const VALID_INTERVALS = new Set(["monthly", "annual"]);
 
 // La facturation est reservee au owner du cabinet (decision multi-utilisateurs
@@ -23,7 +24,7 @@ billingRouter.post("/checkout", requireAuth, requireOwner, async (req, res) => {
     const interval = String(req.body?.interval || "");
 
     if (!VALID_PLANS.has(plan) || !VALID_INTERVALS.has(interval)) {
-      return res.status(400).json({ message: "plan doit etre 'connect'|'pro', interval 'monthly'|'annual'" });
+      return res.status(400).json({ message: "plan doit etre l'un de: 'connect'|'pro_starter'|'pro_scale'|'pro_firm', interval 'monthly'|'annual'" });
     }
 
     const cabinet = await findCabinetById(req.auth.cabinetId);
@@ -50,7 +51,7 @@ billingRouter.post("/change-plan", requireAuth, requireOwner, async (req, res) =
     const interval = String(req.body?.interval || "");
 
     if (!VALID_PLANS.has(plan) || !VALID_INTERVALS.has(interval)) {
-      return res.status(400).json({ message: "plan doit etre 'connect'|'pro', interval 'monthly'|'annual'" });
+      return res.status(400).json({ message: "plan doit etre l'un de: 'connect'|'pro_starter'|'pro_scale'|'pro_firm', interval 'monthly'|'annual'" });
     }
 
     const cabinet = await findCabinetById(req.auth.cabinetId);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchMandants, startFpsConnection } from "../api";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { translateApiError } from "../i18n/apiErrors.js";
 
 function formatDate(value) {
   if (!value) {
@@ -43,7 +44,7 @@ function ConnectMandantPage() {
       const payload = await startFpsConnection(ecbNumber);
       window.location.href = payload.authorizationUrl;
     } catch (err) {
-      setError(err.message || t("connect.unexpectedError"));
+      setError(translateApiError(err.message, t, "connect.unexpectedError"));
       setLoading(false);
     }
   }

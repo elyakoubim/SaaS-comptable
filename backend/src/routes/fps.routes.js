@@ -1,15 +1,39 @@
 import { Router } from "express";
 import { buildAuthorizationUrl, exchangeAuthorizationCode } from "../services/fpsAuth.service.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { findMandantByEcb, listMandantsSummary, deleteMandant } from "../repositories/mandant.repository.js";
+import {
+  findMandantByEcb,
+  countMandantsForCabinet,
+  listMandantsSummary,
+  deleteMandant
+} from "../repositories/mandant.repository.js";
+import { getMandantLimit } from "../config/plans.config.js";
 
 const fpsRouter = Router();
 
-fpsRouter.post("/connect/start", requireAuth, (req, res) => {
+// Plafond de dossiers par plan (28/09/2026, decision produit) : Connect reste
+// illimite, chaque palier Pro a son plafond (cf. plans.config.js). Verifie ici,
+// avant meme de lancer le flux OAuth MyMinfin - pas la peine de faire
+// authentifier le client aupres du SPF pour se faire refuser juste apres.
+// Un mandant deja connecte a ce cabinet (reconnexion d'un token expire) ne
+// compte pas comme un nouveau dossier.
+fpsRouter.post("/connect/start", requireAuth, async (req, res) => {
   try {
     const { ecbNumber } = req.body;
     if (!/^\d{10}$/.test(String(ecbNumber || ""))) {
       return res.status(400).json({ message: "ecbNumber must contain exactly 10 digits" });
+    }
+
+    const limit = getMandantLimit(req.auth.subscriptionPlan);
+    if (limit !== null) {
+      const existing = await findMandantByEcb(String(ecbNumber));
+      const alreadyConnected = Boolean(existing) && existing.cabinet_id === req.auth.cabinetId;
+      if (!alreadyConnected) {
+        const currentCount = await countMandantsForCabinet(req.auth.cabinetId);
+        if (currentCount >= limit) {
+          return res.status(403).json({ message: `MANDANT_LIMIT_REACHED:${limit}` });
+        }
+      }
     }
 
     const authorizationUrl = buildAuthorizationUrl(String(ecbNumber), req.auth.accountantId, req.auth.cabinetId);

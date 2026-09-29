@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { acknowledgeAlert, fetchAlerts, fetchDocumentBlob, requestAlertExtraction } from "../api";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { isProPlan } from "../plans.js";
 
 // Miroir de ALLOWED_EXTRACTION_CATEGORIES cote backend
 // (extraction.service.js) : categories ou un montant/echeance a du sens.
@@ -47,7 +48,7 @@ function AlertsPage({ currentUser }) {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const hasProAccess =
-    currentUser?.subscriptionPlan === "pro" &&
+    isProPlan(currentUser?.subscriptionPlan) &&
     ["trialing", "active"].includes(currentUser?.subscriptionStatus);
   const mandantFilter = searchParams.get("mandant") || "";
 

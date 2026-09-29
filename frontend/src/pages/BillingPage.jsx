@@ -3,12 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { createCheckoutSession, changeSubscriptionPlan, createPortalSession, deleteAccount } from "../api";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import { translateApiError } from "../i18n/apiErrors.js";
-
-const PLAN_KEYS = ["connect", "pro"];
-const PLAN_PRICES = {
-  connect: { monthly: 19, annual: 16 },
-  pro: { monthly: 29, annual: 24 }
-};
+import { PLAN_KEYS, PLAN_PRICES, MANDANT_LIMITS } from "../plans.js";
 
 function BillingPage({ currentUser, onAccountDeleted }) {
   const { t } = useLanguage();
@@ -35,7 +30,8 @@ function BillingPage({ currentUser, onAccountDeleted }) {
     monthly: PLAN_PRICES[key].monthly,
     annual: PLAN_PRICES[key].annual,
     description: t(`billing.plan.${key}.description`),
-    features: t(`billing.plan.${key}.features`)
+    features: t(`billing.plan.${key}.features`),
+    mandantLimit: MANDANT_LIMITS[key]
   }));
 
   async function handleSubscribe(planKey) {
@@ -93,7 +89,7 @@ function BillingPage({ currentUser, onAccountDeleted }) {
         <div className="mt-4 rounded-2xl border border-accent-line bg-accent-soft p-4 text-sm text-accent-strong">
           <p>
             {t("billing.currentPlan", {
-              plan: activePlan === "pro" ? t("billing.plan.pro.name") : t("billing.plan.connect.name"),
+              plan: PLAN_KEYS.includes(activePlan) ? t(`billing.plan.${activePlan}.name`) : t("billing.plan.connect.name"),
               status: activeStatus === "trialing" ? t("billing.status.trialing") : activeStatus
             })}
           </p>
@@ -133,7 +129,7 @@ function BillingPage({ currentUser, onAccountDeleted }) {
         </button>
       </div>
 
-      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+      <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {plans.map((plan) => {
           const price = interval === "annual" ? plan.annual : plan.monthly;
           const isCurrent = activePlan === plan.key && hasActiveSubscription;
@@ -152,6 +148,11 @@ function BillingPage({ currentUser, onAccountDeleted }) {
               )}
               <h3 className="font-display text-lg font-semibold text-ink">{plan.name}</h3>
               <p className="mt-1 text-sm text-muted">{plan.description}</p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-accent-strong">
+                {plan.mandantLimit === null
+                  ? t("billing.plan.dossiersUnlimited")
+                  : t("billing.plan.dossiersLimit", { limit: plan.mandantLimit })}
+              </p>
               <p className="mt-4">
                 <span className="font-display text-3xl font-bold text-ink">{price} €</span>
                 <span className="text-sm text-muted"> {t("billing.perMonth")}</span>

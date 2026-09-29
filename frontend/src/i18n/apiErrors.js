@@ -28,10 +28,23 @@ function normalize(message) {
     .toLowerCase();
 }
 
+// Plafond de dossiers atteint (cf. fps.routes.js, decision du 28/09/2026) :
+// le backend renvoie "MANDANT_LIMIT_REACHED:<limit>" plutot qu'un message
+// fige, pour que le frontend puisse afficher le plafond exact du plan actuel
+// sans avoir a le redupliquer cote client.
+const MANDANT_LIMIT_PATTERN = /^mandant_limit_reached:(\d+)$/;
+
 // t: la fonction de traduction du contexte de langue actif.
 // fallbackKey: cle a utiliser si le message ne correspond a rien de connu.
 function translateApiError(rawMessage, t, fallbackKey) {
-  const key = KNOWN_ERROR_KEYS[normalize(rawMessage)];
+  const normalized = normalize(rawMessage);
+
+  const limitMatch = normalized.match(MANDANT_LIMIT_PATTERN);
+  if (limitMatch) {
+    return t("connect.limitReached", { limit: limitMatch[1] });
+  }
+
+  const key = KNOWN_ERROR_KEYS[normalized];
   return t(key || fallbackKey);
 }
 

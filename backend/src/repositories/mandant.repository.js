@@ -96,6 +96,18 @@ async function findMandantByEcb(ecbNumber) {
   return result.rows[0] || null;
 }
 
+// Nombre de dossiers deja connectes par ce cabinet - utilise pour appliquer
+// le plafond de dossiers du plan (cf. plans.config.js, decision du
+// 28/09/2026) avant d'autoriser une nouvelle connexion FPS.
+async function countMandantsForCabinet(cabinetId) {
+  if (!cabinetId) {
+    throw new Error("cabinetId is required");
+  }
+  const query = `SELECT COUNT(*)::int AS count FROM mandants WHERE cabinet_id = $1::uuid`;
+  const result = await db.query(query, [cabinetId]);
+  return result.rows[0]?.count || 0;
+}
+
 async function listMandantsSummary(cabinetId) {
   if (!cabinetId) {
     throw new Error("cabinetId is required");
@@ -238,6 +250,7 @@ async function deleteMandant(ecbNumber, cabinetId) {
 export {
   upsertMandantTokens,
   findMandantByEcb,
+  countMandantsForCabinet,
   listMandantsSummary,
   listRefreshCandidates,
   listSyncCandidates,

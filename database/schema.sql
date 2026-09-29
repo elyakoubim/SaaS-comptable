@@ -301,3 +301,17 @@ CREATE TABLE IF NOT EXISTS trial_usage (
 
 CREATE INDEX IF NOT EXISTS idx_trial_usage_email ON trial_usage (email);
 CREATE INDEX IF NOT EXISTS idx_trial_usage_fingerprint ON trial_usage (card_fingerprint);
+
+-- Paliers volumetriques Vatu Pro (28/09/2026, decision produit) : le plan
+-- unique "pro" se decline desormais en pro_starter (50 dossiers, reprend
+-- exactement l'ancien "pro" - meme prix, memes price_id Stripe), pro_scale
+-- (250 dossiers) et pro_firm (1000 dossiers, cf. backend/src/config/
+-- plans.config.js pour le detail des plafonds). DROP puis ADD CONSTRAINT
+-- (pas d'IF NOT EXISTS pour une contrainte) : sans risque a rejouer, DROP
+-- precede toujours ADD. La donnee est migree avant que l'ancienne valeur
+-- 'pro' ne devienne invalide au regard de la nouvelle contrainte. Un seul
+-- client concerne a ce jour (contact@legakte.be).
+ALTER TABLE cabinets DROP CONSTRAINT IF EXISTS cabinets_subscription_plan_check;
+UPDATE cabinets SET subscription_plan = 'pro_starter' WHERE subscription_plan = 'pro';
+ALTER TABLE cabinets ADD CONSTRAINT cabinets_subscription_plan_check
+  CHECK (subscription_plan IN ('connect', 'pro_starter', 'pro_scale', 'pro_firm'));

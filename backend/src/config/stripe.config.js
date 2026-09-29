@@ -10,15 +10,28 @@ const stripe = new Stripe(secretKey, {
   apiVersion: "2024-06-20"
 });
 
-// "connect" = Vatu Connect (centralisation seule, 1 utilisateur, sans IA), "pro" = Vatu Pro (+ lecture IA par Vatu, multi-utilisateurs).
+// "connect" = Vatu Connect (centralisation seule, 1 utilisateur, sans IA,
+// illimite en dossiers). "pro_*" = Vatu Pro (+ lecture IA, multi-utilisateurs),
+// decline en 3 paliers volumetriques depuis le 28/09/2026 (cf.
+// plans.config.js pour les plafonds) : pro_starter reprend exactement les
+// variables d'env historiques de l'ancien plan unique "pro", pour ne rien
+// changer a l'abonnement Stripe du client Pro deja existant.
 const priceIds = {
   connect: {
     monthly: process.env.STRIPE_PRICE_CONNECT_MONTHLY || "",
     annual: process.env.STRIPE_PRICE_CONNECT_ANNUAL || ""
   },
-  pro: {
+  pro_starter: {
     monthly: process.env.STRIPE_PRICE_PRO_MONTHLY || "",
     annual: process.env.STRIPE_PRICE_PRO_ANNUAL || ""
+  },
+  pro_scale: {
+    monthly: process.env.STRIPE_PRICE_PRO_SCALE_MONTHLY || "",
+    annual: process.env.STRIPE_PRICE_PRO_SCALE_ANNUAL || ""
+  },
+  pro_firm: {
+    monthly: process.env.STRIPE_PRICE_PRO_FIRM_MONTHLY || "",
+    annual: process.env.STRIPE_PRICE_PRO_FIRM_ANNUAL || ""
   }
 };
 
