@@ -60,7 +60,7 @@ function DemoPage() {
           </div>
           <Link
             className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-strong"
-            to="/login"
+            to="/register"
           >
             {t("demo.createFreeAccount")}
           </Link>
@@ -183,7 +183,7 @@ function DemoPage() {
         <p className="text-sm text-gray-600">{t("demo.convinced")}</p>
         <Link
           className="mt-3 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-accent-strong"
-          to="/login"
+          to="/register"
         >
           {t("demo.createFreeAccount")}
         </Link>

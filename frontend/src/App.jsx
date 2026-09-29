@@ -20,6 +20,7 @@ import { AnalysisPage } from "./pages/AnalysisPage.jsx";
 import { BillingPage } from "./pages/BillingPage.jsx";
 import { BillingResultPage } from "./pages/BillingResultPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
+import { RegisterPage } from "./pages/RegisterPage.jsx";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage.jsx";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage.jsx";
@@ -172,7 +173,7 @@ function AppShell({ children, isAuthenticated, currentUser, onLogout, emailVerif
             ) : location.pathname === "/demo" ? (
               <Link
                 className="rounded-full border border-accent-line bg-accent-soft px-3 py-1 text-sm font-medium text-accent-strong hover:bg-accent-line"
-                to="/login"
+                to="/register"
               >
                 {t("app.createAccount")}
               </Link>
@@ -433,12 +434,24 @@ export default function App() {
                 <LoginPage
                   defaultEmail=""
                   isLoggingIn={isLoggingIn}
-                  isRegistering={isRegistering}
                   loginError={loginError}
+                  planNotice={planNotice}
+                  onLogin={handleLogin}
+                />
+              )
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              isAuthenticated ? (
+                <Navigate replace to="/" />
+              ) : (
+                <RegisterPage
+                  isRegistering={isRegistering}
                   planNotice={planNotice}
                   registerError={registerError}
                   registerSuccess={registerSuccess}
-                  onLogin={handleLogin}
                   onRegister={handleRegister}
                 />
               )
