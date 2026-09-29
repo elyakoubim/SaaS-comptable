@@ -444,7 +444,6 @@ export default function App() {
                   defaultEmail=""
                   isLoggingIn={isLoggingIn}
                   loginError={loginError}
-                  planNotice={planNotice}
                   onLogin={handleLogin}
                 />
               )
