@@ -26,6 +26,7 @@ import { VerifyEmailPage } from "./pages/VerifyEmailPage.jsx";
 import { DemoPage } from "./pages/DemoPage.jsx";
 import { TeamPage } from "./pages/TeamPage.jsx";
 import { useLanguage } from "./i18n/LanguageContext.jsx";
+import { translateApiError } from "./i18n/apiErrors.js";
 
 const navItems = [
   { to: "/", key: "nav.dossiers" },
@@ -283,7 +284,7 @@ export default function App() {
       setCurrentUser(payload.user || null);
       await redirectToRequestedCheckout(payload.user);
     } catch (error) {
-      setLoginError(error.message || t("login.errorDefault"));
+      setLoginError(translateApiError(error.message, t, "login.errorDefault"));
     } finally {
       setIsLoggingIn(false);
     }
@@ -301,7 +302,7 @@ export default function App() {
         setRegisterSuccess(t("register.successDefault"));
       }
     } catch (error) {
-      setRegisterError(error.message || t("register.errorDefault"));
+      setRegisterError(translateApiError(error.message, t, "register.errorDefault"));
     } finally {
       setIsRegistering(false);
     }
@@ -315,7 +316,7 @@ export default function App() {
       const payload = await requestPasswordReset(email);
       setForgotPasswordSuccess(payload.message || t("forgot.successDefault"));
     } catch (error) {
-      setForgotPasswordError(error.message || t("forgot.errorDefault"));
+      setForgotPasswordError(translateApiError(error.message, t, "forgot.errorDefault"));
     } finally {
       setIsRequestingReset(false);
     }
@@ -330,7 +331,7 @@ export default function App() {
       setCurrentUser(payload.user || null);
       setResetPasswordSuccess(t("reset.successDefault"));
     } catch (error) {
-      setResetPasswordError(error.message || t("reset.errorDefault"));
+      setResetPasswordError(translateApiError(error.message, t, "reset.errorDefault"));
     } finally {
       setIsResettingPassword(false);
     }
@@ -352,7 +353,7 @@ export default function App() {
         // Pas grave si pas connecte ici (ex: verification depuis un autre appareil).
       }
     } catch (error) {
-      setVerifyEmailMessage(error.message || t("verify.errorDefault"));
+      setVerifyEmailMessage(translateApiError(error.message, t, "verify.errorDefault"));
       setVerifyEmailStatus("error");
     }
   }
@@ -365,7 +366,7 @@ export default function App() {
       const payload = await resendVerificationEmail();
       setResendVerificationSuccess(payload.message || t("emailBanner.sentDefault"));
     } catch (error) {
-      setResendVerificationError(error.message || t("forgot.errorDefault"));
+      setResendVerificationError(translateApiError(error.message, t, "forgot.errorDefault"));
     } finally {
       setIsResendingVerification(false);
     }

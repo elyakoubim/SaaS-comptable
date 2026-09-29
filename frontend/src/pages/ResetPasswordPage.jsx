@@ -60,7 +60,9 @@ function ResetPasswordPage({ isSubmitting = false, error = "", successMessage = 
             autoComplete="new-password"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="reset-password"
+            minLength={8}
             placeholder={t("reset.newPasswordPlaceholder")}
+            required
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -74,6 +76,7 @@ function ResetPasswordPage({ isSubmitting = false, error = "", successMessage = 
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="reset-password-confirm"
             placeholder={t("reset.confirmPasswordPlaceholder")}
+            required
             type="password"
             value={passwordConfirm}
             onChange={(event) => setPasswordConfirm(event.target.value)}

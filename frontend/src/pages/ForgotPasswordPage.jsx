@@ -29,6 +29,7 @@ function ForgotPasswordPage({ isSubmitting = false, error = "", successMessage =
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="forgot-email"
             placeholder={t("login.emailPlaceholder")}
+            required
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}

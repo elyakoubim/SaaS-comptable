@@ -22,6 +22,7 @@ const fr = {
   "app.checkingSession": "Vérification de la session…",
   "app.footer": "Vatu passe par une connexion officielle et sécurisée, en lecture seule. La décision finale — valider, encoder, payer — vous revient.",
   "app.langSwitch.label": "Langue",
+  "app.serviceUnavailable": "Service momentanement indisponible. Reessayez dans un instant.",
 
   // ── Bandeau de verification d'email ─────────────────────────────────────
   "emailBanner.default": "Confirmez votre adresse email pour securiser votre compte.",
@@ -54,7 +55,13 @@ const fr = {
   "register.submit": "Creer mon compte",
   "register.successDefault": "Inscription reussie. Verifiez votre boite mail pour confirmer votre adresse.",
   "login.errorDefault": "Connexion impossible",
+  "login.errorMissingFields": "Merci de renseigner votre email et votre mot de passe.",
+  "login.errorInvalidCredentials": "Email ou mot de passe incorrect.",
+  "login.errorAccountNotFound": "Aucun compte ne correspond a cet email.",
   "register.errorDefault": "Inscription impossible",
+  "register.errorMissingFields": "Merci de renseigner le nom, l'email et le mot de passe.",
+  "register.errorAccountExists": "Un compte existe deja avec cet email.",
+  "register.errorInvitationInvalid": "Ce lien d'invitation est invalide ou deja utilise.",
   "login.planNotice": "Inscription pour {{plan}} ({{interval}}) - vous serez redirige vers le paiement juste apres.",
   "login.plan.connect": "Vatu Connect",
   "login.plan.pro": "Vatu Pro",
@@ -69,6 +76,7 @@ const fr = {
   "forgot.submit": "Envoyer le lien de reinitialisation",
   "forgot.backToLogin": "Retour a la connexion",
   "forgot.errorDefault": "Demande impossible",
+  "forgot.errorMissingEmail": "Merci de renseigner votre email.",
   "forgot.successDefault": "Si un compte existe pour cette adresse, un email vient d'etre envoye.",
   "reset.invalidLink": "Lien de reinitialisation invalide ou incomplet.",
   "reset.requestNewLink": "Demander un nouveau lien",
@@ -83,6 +91,8 @@ const fr = {
   "reset.errorTooShort": "Le mot de passe doit contenir au moins 8 caracteres.",
   "reset.errorMismatch": "Les deux mots de passe ne correspondent pas.",
   "reset.errorDefault": "Reinitialisation impossible",
+  "reset.errorMissingToken": "Lien de reinitialisation incomplet.",
+  "reset.errorLinkExpired": "Ce lien de reinitialisation est invalide ou a expire.",
   "reset.successDefault": "Mot de passe mis a jour. Redirection...",
 
   // ── Verification d'email ────────────────────────────────────────────────
@@ -93,6 +103,8 @@ const fr = {
   "verify.successDefault": "Adresse email confirmee.",
   "verify.goToApp": "Aller a l'application",
   "verify.errorDefault": "Lien de confirmation invalide ou expire.",
+  "verify.errorMissingToken": "Lien de confirmation incomplet.",
+  "verify.errorLinkExpired": "Ce lien de confirmation est invalide ou a expire.",
   "verify.errorHint": "Connectez-vous puis demandez un nouvel envoi depuis l'application.",
 
   // ── Tableau de bord ──────────────────────────────────────────────────────
@@ -299,6 +311,8 @@ const fr = {
   "billing.danger.deleting": "Suppression...",
   "billing.danger.cancel": "Annuler",
   "billing.danger.errorDefault": "Suppression impossible",
+  "billing.danger.errorMissingPassword": "Merci de renseigner votre mot de passe.",
+  "billing.danger.errorWrongPassword": "Mot de passe incorrect.",
   "billingResult.successTitle": "Abonnement active",
   "billingResult.successBody": "Votre periode d'essai de 14 jours a commence. Vous pouvez des maintenant profiter de Vatu.",
   "billingResult.goToDashboard": "Aller au tableau de bord",
@@ -365,6 +379,7 @@ const nl = {
   "app.checkingSession": "Sessie controleren…",
   "app.footer": "Vatu werkt via een officiële en beveiligde verbinding, in alleen-lezen modus. De uiteindelijke beslissing — valideren, boeken, betalen — blijft bij u.",
   "app.langSwitch.label": "Taal",
+  "app.serviceUnavailable": "Dienst tijdelijk niet beschikbaar. Probeer het straks opnieuw.",
 
   // ── Bevestigingsbanner e-mail ────────────────────────────────────────────
   "emailBanner.default": "Bevestig uw e-mailadres om uw account te beveiligen.",
@@ -397,7 +412,13 @@ const nl = {
   "register.submit": "Account aanmaken",
   "register.successDefault": "Registratie geslaagd. Controleer uw mailbox om uw adres te bevestigen.",
   "login.errorDefault": "Aanmelden niet mogelijk",
+  "login.errorMissingFields": "Vul uw e-mailadres en wachtwoord in.",
+  "login.errorInvalidCredentials": "E-mailadres of wachtwoord onjuist.",
+  "login.errorAccountNotFound": "Geen account gevonden voor dit e-mailadres.",
   "register.errorDefault": "Registratie niet mogelijk",
+  "register.errorMissingFields": "Vul de naam, het e-mailadres en het wachtwoord in.",
+  "register.errorAccountExists": "Er bestaat al een account met dit e-mailadres.",
+  "register.errorInvitationInvalid": "Deze uitnodigingslink is ongeldig of al gebruikt.",
   "login.planNotice": "Inschrijving voor {{plan}} ({{interval}}) - u wordt meteen daarna doorgestuurd naar de betaling.",
   "login.plan.connect": "Vatu Connect",
   "login.plan.pro": "Vatu Pro",
@@ -412,6 +433,7 @@ const nl = {
   "forgot.submit": "Verstuur de resetlink",
   "forgot.backToLogin": "Terug naar aanmelden",
   "forgot.errorDefault": "Aanvraag niet mogelijk",
+  "forgot.errorMissingEmail": "Vul uw e-mailadres in.",
   "forgot.successDefault": "Als er een account bestaat voor dit adres, is er zonet een e-mail verstuurd.",
   "reset.invalidLink": "Ongeldige of onvolledige resetlink.",
   "reset.requestNewLink": "Nieuwe link aanvragen",
@@ -426,6 +448,8 @@ const nl = {
   "reset.errorTooShort": "Het wachtwoord moet minstens 8 tekens bevatten.",
   "reset.errorMismatch": "De twee wachtwoorden komen niet overeen.",
   "reset.errorDefault": "Opnieuw instellen niet mogelijk",
+  "reset.errorMissingToken": "Onvolledige resetlink.",
+  "reset.errorLinkExpired": "Deze resetlink is ongeldig of verlopen.",
   "reset.successDefault": "Wachtwoord bijgewerkt. U wordt doorgestuurd...",
 
   // ── E-mailbevestiging ────────────────────────────────────────────────────
@@ -436,6 +460,8 @@ const nl = {
   "verify.successDefault": "E-mailadres bevestigd.",
   "verify.goToApp": "Naar de applicatie",
   "verify.errorDefault": "Ongeldige of verlopen bevestigingslink.",
+  "verify.errorMissingToken": "Onvolledige bevestigingslink.",
+  "verify.errorLinkExpired": "Deze bevestigingslink is ongeldig of verlopen.",
   "verify.errorHint": "Meld u aan en vraag daarna een nieuwe verzending aan vanuit de applicatie.",
 
   // ── Dashboard ────────────────────────────────────────────────────────────
@@ -642,6 +668,8 @@ const nl = {
   "billing.danger.deleting": "Bezig met verwijderen...",
   "billing.danger.cancel": "Annuleren",
   "billing.danger.errorDefault": "Verwijderen niet mogelijk",
+  "billing.danger.errorMissingPassword": "Vul uw wachtwoord in.",
+  "billing.danger.errorWrongPassword": "Wachtwoord onjuist.",
   "billingResult.successTitle": "Abonnement geactiveerd",
   "billingResult.successBody": "Uw proefperiode van 14 dagen is gestart. U kunt Vatu vanaf nu gebruiken.",
   "billingResult.goToDashboard": "Naar het dashboard",

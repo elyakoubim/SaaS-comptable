@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { createCheckoutSession, changeSubscriptionPlan, createPortalSession, deleteAccount } from "../api";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
+import { translateApiError } from "../i18n/apiErrors.js";
 
 const PLAN_KEYS = ["connect", "pro"];
 const PLAN_PRICES = {
@@ -77,7 +78,7 @@ function BillingPage({ currentUser, onAccountDeleted }) {
       await deleteAccount(deletePassword);
       onAccountDeleted?.();
     } catch (err) {
-      setDeleteError(err.message || t("billing.danger.errorDefault"));
+      setDeleteError(translateApiError(err.message, t, "billing.danger.errorDefault"));
     } finally {
       setIsDeleting(false);
     }
@@ -202,6 +203,7 @@ function BillingPage({ currentUser, onAccountDeleted }) {
               autoComplete="current-password"
               className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-danger sm:flex-1"
               placeholder={t("billing.danger.confirmPlaceholder")}
+              required
               type="password"
               value={deletePassword}
               onChange={(event) => setDeletePassword(event.target.value)}

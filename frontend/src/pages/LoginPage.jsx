@@ -61,6 +61,7 @@ function LoginPage({
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="email"
             placeholder={t("login.emailPlaceholder")}
+            required
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -74,6 +75,7 @@ function LoginPage({
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="password"
             placeholder={t("login.passwordPlaceholder")}
+            required
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -115,6 +117,7 @@ function LoginPage({
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="register-fullname"
             placeholder={t("register.fullNamePlaceholder")}
+            required
             type="text"
             value={registerFullName}
             onChange={(event) => setRegisterFullName(event.target.value)}
@@ -128,6 +131,7 @@ function LoginPage({
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="register-email"
             placeholder={t("register.emailProPlaceholder")}
+            required
             type="email"
             value={registerEmail}
             onChange={(event) => setRegisterEmail(event.target.value)}
@@ -140,7 +144,9 @@ function LoginPage({
             autoComplete="new-password"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-accent"
             id="register-password"
+            minLength={8}
             placeholder={t("register.passwordPlaceholder")}
+            required
             type="password"
             value={registerPassword}
             onChange={(event) => setRegisterPassword(event.target.value)}
