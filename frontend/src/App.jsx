@@ -87,20 +87,28 @@ function EmailVerificationBanner({ isSending, sendError, sendSuccess, onResend }
   );
 }
 
-// Petit bascule FR/NL, deux lettres cliquables (pas un <select> : deux langues
-// seulement, autant montrer les deux d'un coup plutot que d'ouvrir un menu).
+// Bascule FR/NL. Repris du style pilule + icone globe du site vitrine
+// (vatu.be) pour une identite visuelle coherente entre site et app, mais en
+// gardant les deux langues visibles avec la langue active en surbrillance
+// (contrairement au site, l'app est consultee au quotidien : on veut voir
+// d'un coup d'oeil quelle langue est active, pas juste celle vers laquelle
+// basculer).
 function LanguageSwitch() {
   const { lang, setLang, t } = useLanguage();
   return (
     <div
       aria-label={t("app.langSwitch.label")}
-      className="flex items-center overflow-hidden rounded-lg border border-line text-xs font-semibold"
+      className="flex items-center gap-1 rounded-full border border-line bg-white py-1 pl-2 pr-1 text-xs font-semibold shadow-soft"
       role="group"
     >
+      <svg aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted" fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M3.5 12h17M12 3.5c2.4 2.6 2.4 14.4 0 17M12 3.5c-2.4 2.6-2.4 14.4 0 17" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
       {["fr", "nl"].map((code) => (
         <button
-          className={`px-2 py-1.5 uppercase transition ${
-            lang === code ? "bg-accent text-white" : "bg-white text-muted hover:bg-gray-50 hover:text-ink"
+          className={`rounded-full px-2 py-1 uppercase transition ${
+            lang === code ? "bg-accent text-white" : "text-muted hover:bg-gray-50 hover:text-ink"
           }`}
           key={code}
           onClick={() => setLang(code)}
